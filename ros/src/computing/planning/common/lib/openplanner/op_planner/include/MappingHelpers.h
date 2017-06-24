@@ -37,7 +37,7 @@ public:
 
 	static void ConstructRoadNetworkFromDataFiles(const std::string vectoMapPath, RoadNetwork& map, const bool& bZeroOrigin = false);
 
-	static void SaveTrajectoryLonLatToKMLFile(const std::string& fileName, const std::vector<std::vector<WayPoint> >& trajectory);
+	//static void SaveTrajectoryLonLatToKMLFile(const std::string& fileName, const std::vector<std::vector<WayPoint> >& trajectory);
 
 	static void GetWayPoint(const int& pid, const std::vector<UtilityHNS::AisanPointsFileReader::AisanPoints>& points, std::vector<WayPoint>& path);
 	static bool GetWayPoint(const int& id, const int& laneID,const double& refVel, const int& did,
@@ -45,14 +45,8 @@ public:
 			const std::vector<UtilityHNS::AisanPointsFileReader::AisanPoints>& points,
 			const GPSPoint& origin, WayPoint& way_point);
 
-	static void WriteKML(const std::string& kmlFile, const std::string& kmlTemplat, RoadNetwork& ap);
+	//static void WriteKML(const std::string& kmlFile, const std::string& kmlTemplat, RoadNetwork& ap);
 	static void LoadKML(const std::string& kmlMap, RoadNetwork& map);
-
-	static void SetRoadLinksList(TiXmlElement* pElem, std::vector<RoadSegment>& roadSegments);
-	static void SetLaneLinksList(TiXmlElement* pElem, std::vector<Lane>& lanes);
-	static void SetStopLinesList(TiXmlElement* pElem, std::vector<StopLine>& stopLines);
-	static void SetTrafficLightsList(TiXmlElement* pElem, std::vector<TrafficLight>& trafficLights);
-	static void SetTrafficSignsList(TiXmlElement* pElem, std::vector<TrafficSign>& trafficSignes);
 
 	static TiXmlElement* GetHeadElement(TiXmlElement* pMainElem);
 	static TiXmlElement* GetDataFolder(const std::string& folderName, TiXmlElement* pMainElem);
@@ -95,7 +89,7 @@ public:
 	static std::vector<GPSPoint> GetPointsData(TiXmlElement* pElem);
 	static std::vector<std::string> SplitString(const std::string& str, const std::string& token);
 
-	static void CreateKmlFromLocalizationPathFile(const std::string& pathFileName,const double& maxLaneDistance, const double& density,const std::vector<TrafficLight>& trafficLights, const std::vector<GPSPoint>& stopLines);
+	//static void CreateKmlFromLocalizationPathFile(const std::string& pathFileName,const double& maxLaneDistance, const double& density,const std::vector<TrafficLight>& trafficLights, const std::vector<GPSPoint>& stopLines);
 
 	static int ReplaceMyID(int& id, const std::vector<std::pair<int,int> >& rep_list);
 

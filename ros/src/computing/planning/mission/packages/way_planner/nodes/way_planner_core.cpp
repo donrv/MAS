@@ -678,7 +678,6 @@ void way_planner_core::PlannerMainLoop()
 		{
 			m_bKmlMap = true;
 			PlannerHNS::MappingHelpers::LoadKML(m_params.KmlMapPath, m_Map);
-			//PlannerHNS::MappingHelpers::WriteKML("/home/hatem/SimuLogs/KmlMaps/ToyotaMap2017.kml", "/home/hatem/SimuLogs/KmlMaps/PlannerX_MapTemplate.kml", m_Map);
 			visualization_msgs::MarkerArray map_marker_array;
 			RosHelpers::ConvertFromRoadNetworkToAutowareVisualizeMapFormat(m_Map, map_marker_array);
 			pub_MapRviz.publish(map_marker_array);
@@ -687,7 +686,6 @@ void way_planner_core::PlannerMainLoop()
 		{
 			m_bKmlMap = true;
 			PlannerHNS::MappingHelpers::ConstructRoadNetworkFromDataFiles(m_params.KmlMapPath, m_Map, true);
-			//PlannerHNS::MappingHelpers::WriteKML("/home/hatem/SimuLogs/KmlMaps/Moriyama_NoTransform_2017.kml", "/home/hatem/SimuLogs/KmlMaps/PlannerX_MapTemplate.kml", m_Map);
 			visualization_msgs::MarkerArray map_marker_array;
 			RosHelpers::ConvertFromRoadNetworkToAutowareVisualizeMapFormat(m_Map, map_marker_array);
 
