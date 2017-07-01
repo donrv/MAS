@@ -155,6 +155,9 @@ protected:
   	bool m_bEnableTracking;
   	bool m_bEnableOutsideControl;
 
+  	std::vector<int> curr_lanes;
+  	std::vector<PlannerHNS::DetectedObject> curr_curbs_obstacles;
+
   	std::vector<std::string>    m_LogData;
 
 
@@ -246,6 +249,7 @@ protected:
   void UpdatePlanningParams();
 
   lidar_tracker::CloudCluster GenerateSimulatedObstacleCluster(const double& x_rand, const double& y_rand, const double& z_rand, const int& nPoints, const geometry_msgs::PointStamped& centerPose);
+  void GenerateCurbsObstacles(std::vector<PlannerHNS::DetectedObject>& curb_obstacles);
 
 #ifdef DATASET_GENERATION_BLOCK
 private:

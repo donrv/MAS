@@ -353,9 +353,9 @@ void RosHelpers::ConvertFromPlannerObstaclesToAutoware(const PlannerHNS::WayPoin
 	direction_marker.ns = "Object_Direction";
 	direction_marker.type = visualization_msgs::Marker::ARROW;
 	direction_marker.action = visualization_msgs::Marker::ADD;
-	direction_marker.scale.x = .9;
-	direction_marker.scale.y = .4;
-	direction_marker.scale.z = .4;
+	direction_marker.scale.x = .3;
+	direction_marker.scale.y = .1;
+	direction_marker.scale.z = .1;
 	direction_marker.color.a = 0.8;
 	direction_marker.color.r = 0;
 	direction_marker.color.g = 1;
@@ -839,10 +839,13 @@ void RosHelpers::UpdateRoadMap(const AutowareRoadNetwork& src_map, PlannerHNS::R
 	std::vector<UtilityHNS::AisanStopLineFileReader::AisanStopLine> stop_line_data;
 	std::vector<UtilityHNS::AisanSignalFileReader::AisanSignal> signal_data;
 	std::vector<UtilityHNS::AisanVectorFileReader::AisanVector> vector_data;
+	std::vector<UtilityHNS::AisanCurbFileReader::AisanCurb> curb_data;
+	std::vector<UtilityHNS::AisanRoadEdgeFileReader::AisanRoadEdge> roadedge_data;
 	std::vector<UtilityHNS::AisanDataConnFileReader::DataConn> conn_data;
 
 	PlannerHNS::GPSPoint origin;//(m_OriginPos.position.x, m_OriginPos.position.y, m_OriginPos.position.z, 0);
-	PlannerHNS::MappingHelpers::ConstructRoadNetworkFromRosMessage(lanes, points, dts, inters, areas, line_data, stop_line_data, signal_data, vector_data,conn_data, origin, out_map);
+	PlannerHNS::MappingHelpers::ConstructRoadNetworkFromRosMessage(lanes, points, dts, inters, areas, line_data,
+			stop_line_data, signal_data, vector_data,curb_data, roadedge_data, conn_data, origin, out_map);
 }
 
 }

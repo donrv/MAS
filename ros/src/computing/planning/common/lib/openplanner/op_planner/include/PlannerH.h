@@ -8,8 +8,8 @@
 #include "RSPlanner.h"
 #include "GridMap.h"
 
-#define START_POINT_MAX_DISTANCE 8 // meters
-#define GOAL_POINT_MAX_DISTANCE 8 // meters
+#define START_POINT_MAX_DISTANCE 3 // meters
+#define GOAL_POINT_MAX_DISTANCE 3 // meters
 #define LANE_CHANGE_SMOOTH_FACTOR_DISTANCE 8 // meters
 
 namespace PlannerHNS

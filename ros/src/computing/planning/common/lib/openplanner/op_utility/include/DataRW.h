@@ -413,6 +413,46 @@ public:
 	int ReadAllData(std::vector<AisanVector>& data_list);
 };
 
+class AisanCurbFileReader : public SimpleReaderBase
+{
+public:
+
+	struct AisanCurb
+	{
+		int 	ID;
+		int 	LID;
+		double 	Height;
+		double 	Width;
+		int 	dir;
+		int 	LinkID;
+	};
+
+	AisanCurbFileReader(const std::string& fileName) : SimpleReaderBase(fileName, 1){}
+	~AisanCurbFileReader(){}
+
+	bool ReadNextLine(AisanCurb& data);
+	int ReadAllData(std::vector<AisanCurb>& data_list);
+};
+
+class AisanRoadEdgeFileReader : public SimpleReaderBase
+{
+public:
+
+	struct AisanRoadEdge
+	{
+		int 	ID;
+		int 	LID;
+		int 	LinkID;
+	};
+
+	AisanRoadEdgeFileReader(const std::string& fileName) : SimpleReaderBase(fileName, 1){}
+	~AisanRoadEdgeFileReader(){}
+
+	bool ReadNextLine(AisanRoadEdge& data);
+	int ReadAllData(std::vector<AisanRoadEdge>& data_list);
+};
+
+
 class AisanDataConnFileReader : public SimpleReaderBase
 {
 public:

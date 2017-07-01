@@ -18,6 +18,8 @@
 	<arg name="maxDeceleration"				default="-1.0"   />
 	
 	<arg name="enableRvizPoseEst"			default="false"   />
+	<arg name="enableRandomGoal"			default="false"   />
+	
 	<arg name="enableLooper"				default="true"   />
 	<arg name="startPoseX"					default="3733"   />
 	<arg name="startPoseY"					default="-99408"   />
@@ -29,8 +31,8 @@
 	<arg name="baseColorB"					default="1.0" />
 	
 	<arg name="mapSource" 					default="1" /> <!-- Autoware=0, Vector Map Folder=1, kml file=2 -->
-	<arg name="mapFileName" 				default="/media/hatem/8ac0c5d5-8793-4b98-8728-55f8d67ec0f4/data/ToyotaCity2/map/vector_map/" /> <!-- incase of kml map source -->
-	<arg name="logFolder" 					default="/home/hatem/SimuLogs/SimulatedCar2/" />
+	<arg name="mapFileName" 				default="/home/user/data/ToyotaCity2/map/vector_map/" /> <!-- incase of kml map source -->
+	<arg name="logFolder" 					default="/home/user/SimuLogs/SimulatedCar2/" />
 	
 	<node pkg="op_simulator" type="op_simulator" name="op_simulator2" output="screen">
 		
@@ -51,6 +53,8 @@
 		<param name="maxDeceleration" 				value="$(arg maxDeceleration)" />
 		
 		<param name="enableRvizPoseEst" 			value="$(arg enableRvizPoseEst)" />
+		<param name="enableRandomGoal" 				value="$(arg enableRandomGoal)" />
+		
 		<param name="enableLooper" 					value="$(arg enableLooper)" />
 		<param name="startPoseX" 					value="$(arg startPoseX)" />
 		<param name="startPoseY" 					value="$(arg startPoseY)" />

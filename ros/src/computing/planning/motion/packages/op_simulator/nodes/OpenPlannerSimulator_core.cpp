@@ -41,7 +41,7 @@ using namespace std;
 namespace OpenPlannerSimulatorNS
 {
 
-#define REPLANNING_DISTANCE 20
+#define REPLANNING_DISTANCE 2
 #define PLANNING_DISTANCE 50
 
 OpenPlannerSimulator::OpenPlannerSimulator()
@@ -64,6 +64,7 @@ OpenPlannerSimulator::OpenPlannerSimulator()
 	nh.getParam("id" 		, m_SimParams.strID);
 	nh.getParam("id" 		, m_SimParams.id);
 	nh.getParam("enableRvizPoseEst" 	, m_SimParams.bRandomStart);
+	nh.getParam("enableRandomGoal" 		, m_SimParams.bRandomGoal);
 	nh.getParam("enableLooper" 			, m_SimParams.bLooper);
 	nh.getParam("startPoseX" 			, m_SimParams.startPose.pos.x);
 	nh.getParam("startPoseY" 			, m_SimParams.startPose.pos.y);
@@ -127,16 +128,31 @@ OpenPlannerSimulator::OpenPlannerSimulator()
 	if(m_SimParams.bRandomStart)
 	{
 		bInitPos = false;
-		sub_initialpose 		= nh.subscribe("/initialpose", 		100, &OpenPlannerSimulator::callbackGetInitPose, 		this);
+		sub_initialpose 		= nh.subscribe("/initialpose", 		1, &OpenPlannerSimulator::callbackGetInitPose, 		this);
+
+		if(!m_SimParams.bRandomGoal)
+		{
+			bGoalPos = false;
+			sub_goalpose 		= nh.subscribe("/move_base_simple/goal", 1, &OpenPlannerSimulator::callbackGetGoalPose, 		this);
+		}
+		else
+			bGoalPos = true;
 	}
 	else
 	{
 		bInitPos = true;
-		PlannerHNS::WayPoint start_p;
-		if(LoadSimulationData(start_p))
+		bGoalPos = true;
+		PlannerHNS::WayPoint start_p, goal_p;
+		int nRecords = LoadSimulationData(start_p, goal_p);
+		if(nRecords > 0)
 		{
 			m_SimParams.startPose.pos = start_p.pos;
 			m_CarInfo.max_speed_forward = start_p.v;
+		}
+
+		if(nRecords > 1 && !m_SimParams.bRandomGoal)
+		{
+			m_SimParams.goalPose.pos = goal_p.pos;
 		}
 
 		//InitializeSimuCar(m_SimParams.startPose);
@@ -210,12 +226,32 @@ void OpenPlannerSimulator::callbackGetInitPose(const geometry_msgs::PoseWithCova
 		p.orientation = msg->pose.pose.orientation;
 		m_SimParams.startPose =  PlannerHNS::WayPoint(p.position.x, p.position.y, p.position.z , tf::getYaw(p.orientation));
 
-		SaveSimulationData();
-
-		InitializeSimuCar(m_SimParams.startPose);
+		if(m_SimParams.bRandomGoal)
+		{
+			SaveSimulationData();
+			InitializeSimuCar(m_SimParams.startPose);
+		}
 
 		bInitPos = true;
 	}
+}
+
+void OpenPlannerSimulator::callbackGetGoalPose(const geometry_msgs::PoseStampedConstPtr &msg)
+{
+	if(!bGoalPos)
+	{
+		PlannerHNS::WayPoint wp;
+		wp = PlannerHNS::WayPoint(msg->pose.position.x+m_OriginPos.position.x, msg->pose.position.y+m_OriginPos.position.y,
+				msg->pose.position.z+m_OriginPos.position.z, tf::getYaw(msg->pose.orientation));
+		m_SimParams.goalPose = wp;
+		ROS_INFO("Received Goal Pose");
+
+		SaveSimulationData();
+		InitializeSimuCar(m_SimParams.startPose);
+
+		bGoalPos = true;
+	}
+
 }
 
 void OpenPlannerSimulator::InitializeSimuCar(PlannerHNS::WayPoint start_pose)
@@ -518,10 +554,11 @@ void OpenPlannerSimulator::visualizeBehaviors()
 void OpenPlannerSimulator::SaveSimulationData()
 {
 	std::vector<std::string> simulationDataPoints;
-	std::ostringstream startStr;
+	std::ostringstream startStr, goalStr;
 	startStr << m_SimParams.startPose.pos.x << "," << m_SimParams.startPose.pos.y << "," << m_SimParams.startPose.pos.z << "," << m_SimParams.startPose.pos.a << ","<< m_SimParams.startPose.cost << "," << m_CarInfo.max_speed_forward << ",";
+	goalStr << m_SimParams.goalPose.pos.x << "," << m_SimParams.goalPose.pos.y << "," << m_SimParams.goalPose.pos.z << "," << m_SimParams.goalPose.pos.a << "," << 0 << "," << 0 << ",";
+
 	simulationDataPoints.push_back(startStr.str());
-	std::ostringstream goalStr;
 	simulationDataPoints.push_back(goalStr.str());
 
 	std::string header = "X,Y,Z,A,C,V,";
@@ -545,7 +582,7 @@ void OpenPlannerSimulator::SaveSimulationData()
 	f.close();
 }
 
-bool OpenPlannerSimulator::LoadSimulationData(PlannerHNS::WayPoint& start_p)
+int OpenPlannerSimulator::LoadSimulationData(PlannerHNS::WayPoint& start_p, PlannerHNS::WayPoint& goal_p)
 {
 	ostringstream fileName;
 	fileName << "SimuCar_";
@@ -556,13 +593,16 @@ bool OpenPlannerSimulator::LoadSimulationData(PlannerHNS::WayPoint& start_p)
 	UtilityHNS::SimulationFileReader sfr(simuDataFileName);
 	UtilityHNS::SimulationFileReader::SimulationData data;
 
-	if(sfr.ReadAllData(data) == 0)
-		return false;
+	int nData = sfr.ReadAllData(data);
+	if(nData == 0)
+		return 0;
 
 	start_p = PlannerHNS::WayPoint(data.startPoint.x, data.startPoint.y, data.startPoint.z, data.startPoint.a);
+	goal_p = PlannerHNS::WayPoint(data.goalPoint.x, data.goalPoint.y, data.goalPoint.z, data.goalPoint.a);
+
 	start_p.v = data.startPoint.v;
 	start_p.cost = data.startPoint.c;
-	return true;
+	return nData;
 }
 
 void OpenPlannerSimulator::PlannerMainLoop()
@@ -595,7 +635,7 @@ void OpenPlannerSimulator::PlannerMainLoop()
 				InitializeSimuCar(m_SimParams.startPose);
 		}
 
-		if(m_bMap && bInitPos)
+		if(m_bMap && bInitPos && (!m_SimParams.bRandomGoal && bGoalPos))
 		{
 			double dt  = UtilityHNS::UtilityH::GetTimeDiffNow(m_PlanningTimer);
 			UtilityHNS::UtilityH::GetTickCount(m_PlanningTimer);
@@ -622,7 +662,12 @@ void OpenPlannerSimulator::PlannerMainLoop()
 			if(bMakeNewPlan)
 			{
 				std::vector<std::vector<PlannerHNS::WayPoint> > generatedTotalPaths;
-				double ret = m_GlobalPlanner.PlanUsingDPRandom(m_LocalPlanner.state, PLANNING_DISTANCE, m_Map, generatedTotalPaths);
+				vector<int> globalPathIds;
+				if(m_SimParams.bRandomGoal)
+					m_GlobalPlanner.PlanUsingDPRandom(m_LocalPlanner.state, PLANNING_DISTANCE, m_Map, generatedTotalPaths);
+				else
+					m_GlobalPlanner.PlanUsingDP(m_LocalPlanner.state, m_SimParams.goalPose, 100000, false, globalPathIds, m_Map, generatedTotalPaths);
+
 				for(unsigned int i=0; i < generatedTotalPaths.size(); i++)
 				{
 					PlannerHNS::PlanningHelpers::CalcAngleAndCost(generatedTotalPaths.at(i));

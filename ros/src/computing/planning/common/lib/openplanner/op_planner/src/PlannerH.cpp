@@ -276,11 +276,12 @@ PlannerH::PlannerH()
   	vector<vector<WayPoint> > tempCurrentForwardPathss;
   	const std::vector<int> globalPath;
   	PlanningHelpers::TraversePathTreeBackwards(pLaneCell, pStart, globalPath, path, tempCurrentForwardPathss);
-  	paths.push_back(path);
-
-
   	cout << endl <<"Info: PlannerH -> Plan (B) Path With Size (" << (int)path.size() << "), MultiPaths No(" << paths.size() << ") Extraction Time : " << endl;
 
+  	//PlanningHelpers::CreateManualBranch(path, 0, FORWARD_RIGHT_DIR);
+	//cout << "Right Branch Created with Size: " << path.size()  << endl;
+	//PlanningHelpers::CreateManualBranch(path, 0, FORWARD_LEFT_DIR);
+	paths.push_back(path);
 
   	if(path.size()<2)
   	{
@@ -326,22 +327,42 @@ double PlannerH::PlanUsingDP(const WayPoint& start,
  	PlanningHelpers::GetRelativeInfo(pStart->pLane->points, start, start_info);
  	PlanningHelpers::GetRelativeInfo(pGoal->pLane->points, goalPos, goal_info);
 
- 	if(start_info.perp_distance > START_POINT_MAX_DISTANCE)
+ 	vector<WayPoint> start_path, goal_path;
+
+ 	if(fabs(start_info.perp_distance) > START_POINT_MAX_DISTANCE)
  	{
- 		GPSPoint sp = start.pos;
-		cout << endl << "Error: PlannerH -> Start Distance to Lane is: " << start_info.perp_distance
-		<< ", Pose: " << sp.ToString() << ", LanePose:" << start_info.perp_point.pos.ToString()
-		<< ", LaneID: " << pStart->pLane->id << " -> Check origin and vector map. " << endl;
- 		return 0;
+ 		//if(fabs(start_info.perp_distance) > 20)
+ 		{
+			GPSPoint sp = start.pos;
+			cout << endl << "Error: PlannerH -> Start Distance to Lane is: " << start_info.perp_distance
+			<< ", Pose: " << sp.ToString() << ", LanePose:" << start_info.perp_point.pos.ToString()
+			<< ", LaneID: " << pStart->pLane->id << " -> Check origin and vector map. " << endl;
+			return 0;
+ 		}
+// 		else
+// 		{
+// 			//PlanUsingReedShepp(start, *pStart, start_path, 1.0, 1);
+// 		}
  	}
 
- 	if(goal_info.perp_distance > GOAL_POINT_MAX_DISTANCE)
+ 	if(fabs(goal_info.perp_distance) > GOAL_POINT_MAX_DISTANCE)
 	{
-		GPSPoint gp = goalPos.pos;
-		cout << endl << "Error: PlannerH -> Goal Distance to Lane is: " << goal_info.perp_distance
-		<< ", Pose: " << gp.ToString() << ", LanePose:" << goal_info.perp_point.pos.ToString()
-		<< ", LaneID: " << pGoal->pLane->id << " -> Check origin and vector map. " << endl;
-		return 0;
+ 		if(fabs(start_info.perp_distance) > 20)
+ 		{
+			GPSPoint gp = goalPos.pos;
+			cout << endl << "Error: PlannerH -> Goal Distance to Lane is: " << goal_info.perp_distance
+			<< ", Pose: " << gp.ToString() << ", LanePose:" << goal_info.perp_point.pos.ToString()
+			<< ", LaneID: " << pGoal->pLane->id << " -> Check origin and vector map. " << endl;
+			return 0;
+ 		}
+ 		else
+ 		{
+ 			WayPoint wp = *pGoal;
+ 			wp.pos.x = (goalPos.pos.x+pGoal->pos.x)/2.0;
+ 			wp.pos.y = (goalPos.pos.y+pGoal->pos.y)/2.0;
+ 			goal_path.push_back(wp);
+ 			goal_path.push_back(goalPos);
+ 		}
 	}
 
  	vector<WayPoint*> local_cell_to_delete;
@@ -381,6 +402,28 @@ double PlannerH::PlanUsingDP(const WayPoint& start,
  	else if (bPlan == 'B')
  	{
 		paths.push_back(path);
+ 	}
+
+ 	//attach start path to beginning of all paths, but goal path to only the path connected to the goal path.
+ 	for(unsigned int i=0; i< paths.size(); i++ )
+ 	{
+ 		paths.at(i).insert(paths.at(i).begin(), start_path.begin(), start_path.end());
+ 		if(paths.at(i).size() > 0)
+ 		{
+ 			//if(hypot(paths.at(i).at(paths.at(i).size()-1).pos.y-goal_info.perp_point.pos.y, paths.at(i).at(paths.at(i).size()-1).pos.x-goal_info.perp_point.pos.x) < 1.5)
+ 			{
+
+ 				if(paths.at(i).size() > 0 && goal_path.size() > 0)
+ 				{
+ 					goal_path.insert(goal_path.begin(), paths.at(i).end()-5, paths.at(i).end());
+ 					PlanningHelpers::SmoothPath(goal_path, 0.25, 0.25);
+ 					PlanningHelpers::FixPathDensity(goal_path, 0.75);
+ 					PlanningHelpers::SmoothPath(goal_path, 0.25, 0.35);
+ 					paths.at(i).erase(paths.at(i).end()-5, paths.at(i).end());
+ 					paths.at(i).insert(paths.at(i).end(), goal_path.begin(), goal_path.end());
+ 				}
+ 			}
+ 		}
  	}
 
  	cout << endl <<"Info: PlannerH -> Plan (" << bPlan << ") Path With Size (" << (int)path.size() << "), MultiPaths No(" << paths.size() << ") Extraction Time : " << endl;

@@ -638,6 +638,46 @@ double PlanningHelpers::GetDistanceToClosestStopLineAndCheck(const std::vector<W
 	return -1;
 }
 
+void PlanningHelpers::CreateManualBranch(std::vector<WayPoint>& path, const int& degree, const DIRECTION_TYPE& direction)
+{
+	if(path.size() < 5) return;
+
+	//start branch point
+	WayPoint branch_start = path.at(path.size()-5);
+	WayPoint last_wp = path.at(path.size()-1);
+
+
+	WayPoint endWP;
+	vector<WayPoint> goal_path;
+	double branch_angle = 0;
+	if(direction == FORWARD_RIGHT_DIR)
+	{
+		branch_angle = last_wp.pos.a-M_PI_2;
+	}
+	else if(direction == FORWARD_LEFT_DIR)
+	{
+		branch_angle = last_wp.pos.a+M_PI_2;
+	}
+	endWP.pos.y = last_wp.pos.y + 10*sin(branch_angle);
+	endWP.pos.x = last_wp.pos.x + 10*cos(branch_angle);
+
+	WayPoint wp = last_wp;
+	wp.pos.x = (last_wp.pos.x+endWP.pos.x)/2.0;
+	wp.pos.y = (last_wp.pos.y+endWP.pos.y)/2.0;
+	endWP.bDir = wp.bDir = direction;
+	goal_path.push_back(wp);
+	goal_path.push_back(endWP);
+
+	goal_path.insert(goal_path.begin(), path.end()-5, path.end());
+	PlanningHelpers::SmoothPath(goal_path, 0.25, 0.25);
+	PlanningHelpers::FixPathDensity(goal_path, 0.75);
+	PlanningHelpers::SmoothPath(goal_path, 0.25, 0.35);
+	path.erase(path.end()-5, path.end());
+	path.insert(path.end(), goal_path.begin(), goal_path.end());
+
+
+}
+
 void PlanningHelpers::FixPathDensity(vector<WayPoint>& path, const double& distanceDensity)
 {
 	if(path.size() == 0 || distanceDensity==0) return;

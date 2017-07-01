@@ -451,6 +451,24 @@ public:
 	}
 };
 
+class Curb
+{
+public:
+	int id;
+	int laneId;
+	int roadId;
+	std::vector<GPSPoint> points;
+	Lane* pLane;
+
+	Curb()
+	{
+		id    = 0;
+		laneId =0;
+		roadId =0;
+		pLane = 0;
+	}
+};
+
 class StopLine
 {
 public:
@@ -461,6 +479,7 @@ public:
 	int stopSignID;
 	std::vector<GPSPoint> points;
 	Lane* pLane;
+	int linkID;
 
 	StopLine()
 	{
@@ -470,6 +489,7 @@ public:
 		pLane = 0;
 		trafficLightID = -1;
 		stopSignID = -1;
+		linkID = 0;
 	}
 };
 
@@ -539,12 +559,14 @@ public:
 	double stoppingDistance;
 	std::vector<int> laneIds;
 	std::vector<Lane*> pLanes;
+	int linkID;
 
 	TrafficLight()
 	{
 		stoppingDistance = 2;
 		id 			= 0;
 		lightState	= GREEN_LIGHT;
+		linkID 		= 0;
 	}
 
 	bool CheckLane(const int& laneId)
@@ -637,6 +659,7 @@ public:
 	std::vector<RoadSegment> roadSegments;
 	std::vector<TrafficLight> trafficLights;
 	std::vector<StopLine> stopLines;
+	std::vector<Curb> curbs;
 
 };
 

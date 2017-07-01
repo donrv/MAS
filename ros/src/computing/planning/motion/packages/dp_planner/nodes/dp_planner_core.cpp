@@ -757,6 +757,7 @@ void PlannerX::callbackGetWayPlannerPath(const waypoint_follower_msgs::LaneArray
 {
 	if(msg->lanes.size() > 0)
 	{
+		curr_lanes.clear();
 		m_WayPlannerPaths.clear();
 		bool bOldGlobalPath = m_LocalPlanner.m_TotalPath.size() == msg->lanes.size();
 		for(unsigned int i = 0 ; i < msg->lanes.size(); i++)
@@ -791,7 +792,7 @@ void PlannerX::callbackGetWayPlannerPath(const waypoint_follower_msgs::LaneArray
 
 					if(!pLane && !pPrevValid)
 					{
-						ROS_ERROR("Map inconsistency between Global Path add Lal Planer, Can't identify current lane.");
+						ROS_ERROR("Map inconsistency between Global Path and Local Planer Map, Can't identify current lane.");
 						return;
 					}
 
@@ -807,6 +808,19 @@ void PlannerX::callbackGetWayPlannerPath(const waypoint_follower_msgs::LaneArray
 				}
 				else
 					wp.pLane = pLane;
+
+
+				bool bLaneFound = false;
+				for(unsigned ils=0; ils < curr_lanes.size(); ils++)
+				{
+					if(curr_lanes.at(ils) == wp.laneId)
+					{
+						bLaneFound = true;
+						break;
+					}
+				}
+				if(!bLaneFound)
+					curr_lanes.push_back(wp.laneId);
 
 				path.push_back(wp);
 			}
@@ -850,7 +864,15 @@ void PlannerX::callbackGetWayPlannerPath(const waypoint_follower_msgs::LaneArray
 			//m_CurrentGoal = m_WayPlannerPaths.at(0).at(m_WayPlannerPaths.at(0).size()-1);
 			m_LocalPlanner.m_TotalPath = m_WayPlannerPaths;
 
+			if(m_LocalPlanner.m_TotalPath.size()>0)
+			{
+				curr_curbs_obstacles.clear();
+				GenerateCurbsObstacles(curr_curbs_obstacles);
+			}
+
 			cout << "Global Lanes Size = " << msg->lanes.size() <<", Conv Size= " << m_WayPlannerPaths.size() << ", First Lane Size: " << m_WayPlannerPaths.at(0).size() << endl;
+			cout << "Numbe of Curbs Objects: " << curr_curbs_obstacles.size() << endl;
+			cout << "Number of Current Lanes : " << curr_lanes.size() << endl ;
 
 //			for(unsigned int k= 0; k < m_WayPlannerPaths.at(0).size(); k++)
 //			{
@@ -859,6 +881,49 @@ void PlannerX::callbackGetWayPlannerPath(const waypoint_follower_msgs::LaneArray
 //					cout << "Stop Line IDs: " << m_WayPlannerPaths.at(0).at(k).stopLineID << ", Lane: " << m_WayPlannerPaths.at(0).at(k).pLane << ", Stop Lines: "<< m_WayPlannerPaths.at(0).at(k).pLane->stopLines.size() << endl;
 //				}
 //			}
+		}
+	}
+}
+
+void PlannerX::GenerateCurbsObstacles(std::vector<PlannerHNS::DetectedObject>& curb_obstacles)
+{
+
+	PlannerHNS::RelativeInfo car_info;
+	PlannerHNS::PlanningHelpers::GetRelativeInfo(m_LocalPlanner.m_TotalPath.at(0), m_LocalPlanner.state, car_info);
+
+	for(unsigned int ic = 0; ic < m_Map.curbs.size(); ic++)
+	{
+
+		if(m_Map.curbs.at(ic).points.size() > 0)
+		{
+			PlannerHNS::DetectedObject obj;
+			obj.center.pos = m_Map.curbs.at(ic).points.at(0);
+
+			if(curb_obstacles.size()>0)
+			{
+				double distance_to_prev = hypot(curb_obstacles.at(curb_obstacles.size()-1).center.pos.y-obj.center.pos.y, curb_obstacles.at(curb_obstacles.size()-1).center.pos.x-obj.center.pos.x);
+				if(distance_to_prev < 1.5)
+					continue;
+			}
+
+			PlannerHNS::RelativeInfo obj_info;
+			PlannerHNS::PlanningHelpers::GetRelativeInfo(m_LocalPlanner.m_TotalPath.at(0), obj.center, obj_info);
+			double longitudinalDist = PlannerHNS::PlanningHelpers::GetExactDistanceOnTrajectory(m_LocalPlanner.m_TotalPath.at(0), car_info, obj_info);
+
+
+			cout << "Curb Proximity = " << obj_info.perp_distance << ", Distance On Path = " << longitudinalDist << endl;
+
+			if(fabs(obj_info.perp_distance) > 2.5 || longitudinalDist < 0 || longitudinalDist > 50)
+				continue;
+
+			obj.id = -1;
+			obj.t  = PlannerHNS::SIDEWALK;
+			for(unsigned int icp=0; icp< m_Map.curbs.at(ic).points.size(); icp++)
+			{
+				obj.contour.push_back(m_Map.curbs.at(ic).points.at(icp));
+			}
+
+			curb_obstacles.push_back(obj);
 		}
 	}
 }
@@ -915,7 +980,12 @@ void PlannerX::PlannerMainLoop()
 			double dt  = UtilityHNS::UtilityH::GetTimeDiffNow(m_PlanningTimer);
 			UtilityHNS::UtilityH::GetTickCount(m_PlanningTimer);
 
-			m_CurrentBehavior = m_LocalPlanner.DoOneStep(dt, m_VehicleState, m_TrackedClusters, 1, m_Map, m_bEmergencyStop, m_bGreenLight, true);
+			std::vector<PlannerHNS::DetectedObject> allObstacles;
+			curr_curbs_obstacles.clear();
+			GenerateCurbsObstacles(curr_curbs_obstacles);
+			allObstacles.insert(allObstacles.end(), curr_curbs_obstacles.begin(), curr_curbs_obstacles.end());
+			allObstacles.insert(allObstacles.end(), m_TrackedClusters.begin(), m_TrackedClusters.end());
+			m_CurrentBehavior = m_LocalPlanner.DoOneStep(dt, m_VehicleState, allObstacles, 1, m_Map, m_bEmergencyStop, m_bGreenLight, true);
 
 			visualization_msgs::Marker behavior_rviz;
 
@@ -952,7 +1022,7 @@ void PlannerX::PlannerMainLoop()
 			pub_BehaviorState.publish(behavior);
 
 			visualization_msgs::MarkerArray detectedPolygons;
-			RosHelpers::ConvertFromPlannerObstaclesToAutoware(m_CurrentPos, m_TrackedClusters, detectedPolygons);
+			RosHelpers::ConvertFromPlannerObstaclesToAutoware(m_CurrentPos, allObstacles, detectedPolygons);
 			pub_DetectedPolygonsRviz.publish(detectedPolygons);
 
 			visualization_msgs::Marker safety_box;

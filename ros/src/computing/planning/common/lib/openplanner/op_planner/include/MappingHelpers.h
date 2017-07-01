@@ -32,6 +32,8 @@ public:
 			const std::vector<UtilityHNS::AisanStopLineFileReader::AisanStopLine>& stop_line_data,
 			const std::vector<UtilityHNS::AisanSignalFileReader::AisanSignal>& signal_data,
 			const std::vector<UtilityHNS::AisanVectorFileReader::AisanVector>& vector_data,
+			const std::vector<UtilityHNS::AisanCurbFileReader::AisanCurb>& curb_data,
+			const std::vector<UtilityHNS::AisanRoadEdgeFileReader::AisanRoadEdge>& roadedge_data,
 			const std::vector<UtilityHNS::AisanDataConnFileReader::DataConn>& conn_data,
 			const GPSPoint& origin, RoadNetwork& map, const bool& bSpecialFlag = false);
 
@@ -52,13 +54,34 @@ public:
 	static TiXmlElement* GetDataFolder(const std::string& folderName, TiXmlElement* pMainElem);
 
 
-	static Lane* GetClosestLaneFromMap(const WayPoint& pos, RoadNetwork& map, const double& distance = 5.0);
+	static Lane* GetClosestLaneFromMap(const WayPoint& pos, RoadNetwork& map, const double& distance = 5.0, const bool bDirectionBased = true);
 	static Lane* GetClosestLaneFromMapDirectionBased(const WayPoint& pos, RoadNetwork& map, const double& distance = 5.0);
 	static std::vector<Lane*> GetClosestMultipleLanesFromMap(const WayPoint& pos, RoadNetwork& map, const double& distance = 5.0);
-	static WayPoint* GetClosestWaypointFromMap(const WayPoint& pos, RoadNetwork& map);
+	static WayPoint* GetClosestWaypointFromMap(const WayPoint& pos, RoadNetwork& map, const bool bDirectionBased = true);
 	static WayPoint* GetClosestBackWaypointFromMap(const WayPoint& pos, RoadNetwork& map);
 	static WayPoint GetFirstWaypoint(RoadNetwork& map);
 	static WayPoint* GetLastWaypoint(RoadNetwork& map);
+	static void FindAdjacentLanes(RoadNetwork& map);
+	static void ExtractSignalData(const std::vector<UtilityHNS::AisanSignalFileReader::AisanSignal>& signal_data,
+			const std::vector<UtilityHNS::AisanVectorFileReader::AisanVector>& vector_data,
+			const std::vector<UtilityHNS::AisanPointsFileReader::AisanPoints>& points_data,
+			const GPSPoint& origin, RoadNetwork& map);
+
+	static void ExtractStopLinesData(const std::vector<UtilityHNS::AisanStopLineFileReader::AisanStopLine>& stop_line_data,
+			const std::vector<UtilityHNS::AisanLinesFileReader::AisanLine>& line_data,
+			const std::vector<UtilityHNS::AisanPointsFileReader::AisanPoints>& points_data,
+			const GPSPoint& origin, RoadNetwork& map);
+
+	static void ExtractCurbData(const std::vector<UtilityHNS::AisanCurbFileReader::AisanCurb>& curb_data,
+				const std::vector<UtilityHNS::AisanLinesFileReader::AisanLine>& line_data,
+				const std::vector<UtilityHNS::AisanPointsFileReader::AisanPoints>& points_data,
+				const GPSPoint& origin, RoadNetwork& map);
+
+	static void LinkMissingBranchingWayPoints(RoadNetwork& map);
+	static void LinkTrafficLightsAndStopLinesConData(const std::vector<UtilityHNS::AisanDataConnFileReader::DataConn>& conn_data,
+			const std::vector<std::pair<int,int> >& id_replace_list, RoadNetwork& map);
+
+	static void LinkTrafficLightsAndStopLines(RoadNetwork& map);
 
 
 	static void llaToxyz(GPSPoint& lla_p, const GPSPoint& origin);

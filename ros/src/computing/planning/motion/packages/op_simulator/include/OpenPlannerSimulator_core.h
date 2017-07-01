@@ -74,8 +74,10 @@ public:
 	std::string 	logPath;
 	MAP_SOURCE_TYPE	mapSource;
 	bool			bRandomStart;
+	bool			bRandomGoal;
 	bool 			bLooper;
 	PlannerHNS::WayPoint startPose;
+	PlannerHNS::WayPoint goalPose;
 	std_msgs::ColorRGBA modelColor;
 
 	SimuCommandParams()
@@ -83,6 +85,7 @@ public:
 		id = 0;
 		bRandomStart = false;
 		bLooper = false;
+		bRandomGoal = true;
 		mapSource = MAP_KML_FILE;
 		modelColor.a = 1;
 		modelColor.b = 1;
@@ -107,6 +110,7 @@ protected:
 	std::vector<PlannerHNS::DetectedObject> m_TrackedClusters;
 
 	bool bInitPos;
+	bool bGoalPos;
 	bool bNewClusters;
 
 
@@ -124,10 +128,12 @@ protected:
 
 	// define subscribers.
 	ros::Subscriber sub_initialpose;
+	ros::Subscriber sub_goalpose;
 	ros::Subscriber sub_cloudClusters;
 
 	// Callback function for subscriber.
 	void callbackGetInitPose(const geometry_msgs::PoseWithCovarianceStampedConstPtr &msg);
+	void callbackGetGoalPose(const geometry_msgs::PoseStampedConstPtr &msg);
 	void callbackGetCloudClusters(const lidar_tracker::CloudClusterArrayConstPtr& msg);
 
 public:
@@ -154,7 +160,7 @@ public:
   void visualizeBehaviors();
 
   void SaveSimulationData();
-  bool LoadSimulationData(PlannerHNS::WayPoint& start_p);
+  int LoadSimulationData(PlannerHNS::WayPoint& start_p, PlannerHNS::WayPoint& goal_p);
   void InitializeSimuCar(PlannerHNS::WayPoint start_pose);
 };
 
