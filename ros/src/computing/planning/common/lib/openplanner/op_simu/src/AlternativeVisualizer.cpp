@@ -37,6 +37,7 @@ AlternativeVisualizer::AlternativeVisualizer()
 //	string kml_fileToSave =UtilityH::GetHomeDirectory()+DataRW::LoggingMainfolderName + DataRW::KmlMapsFolderName+kmltargetFile;
 //	PlannerHNS::MappingHelpers::WriteKML(kml_fileToSave, kml_templateFilePath, m_RoadMap);
 //	PlannerHNS::MappingHelpers::LoadKML("/home/user/SimuLogs/road_network_test.kml", m_RoadMap);
+	m_pMap = new PlannerHNS::GridWorld(0,0,50,50,1.0, true);
 
 	PlannerHNS::MappingHelpers::ConstructRoadNetworkFromDataFiles("/media/hatem/8ac0c5d5-8793-4b98-8728-55f8d67ec0f4/data/ToyotaCity2/map/vector_map/", m_RoadMap);
 	m_start =  PlannerHNS::MappingHelpers::GetFirstWaypoint(m_RoadMap);
@@ -73,7 +74,9 @@ void AlternativeVisualizer::UpdatePlaneStartGoal(const double& x1,const double& 
 
 	PlannerHNS::PlannerH planner;
 	m_GeneratedPath.clear();
-	planner.PlanUsingReedShepp(m_start, m_goal, m_GeneratedPath, 0.5, 20);
+	//planner.PlanUsingReedShepp(m_start, m_goal, m_GeneratedPath, 0.5, 20);
+	CAR_BASIC_INFO info;
+	planner.PlanUsingAStar(m_start, m_goal, *m_pMap, m_GeneratedPath, info, 0.5, 20);
 	cout << "Path is Generated: " << m_GeneratedPath.size() << endl;
 }
 
@@ -218,15 +221,16 @@ void AlternativeVisualizer::DrawGPSData()
 
 
 	// 6- using kalman filter
+
 	vector<WayPoint> gpsDataPathSmoothedKalman = gpsDataPath;
-	KFTrackV kf(origin.x, origin.y, origin.a, 0, 1);
+/*	KFTrackV kf(origin.x, origin.y, origin.a, 0, 1);
 	for(unsigned int i = 0 ; i < gpsDataPathSmoothedKalman.size(); i++)
 	{
 		GPSPoint p = gpsDataPathSmoothedKalman.at(i).pos;
 		kf.UpdateTracking(0.1, p.x, p.y, p.a, p.x, p.y, p.a, gpsDataPathSmoothedKalman.at(i).v);
 		gpsDataPathSmoothedKalman.at(i).pos = p;
 	}
-
+*/
 	// 7- using median filter with order n
 	vector<double> x_signal_res;
 	vector<double> y_signal_res;
@@ -336,8 +340,11 @@ void AlternativeVisualizer::DrawVectorMap()
 
 void AlternativeVisualizer::DrawSimu()
 {
+	if(m_pMap)
+		DrawingHelpers::DrawGrid(m_pMap->origin_x, m_pMap->origin_y, m_pMap->w, m_pMap->h, m_pMap->cell_l);
+
 	//DrawGPSData();
-	DrawVectorMap();
+	//DrawVectorMap();
 	float color[] = {0, 1, 0};
 	DrawingHelpers::DrawWidePath(m_GeneratedPath, 0.5, 0.5, color);
 }

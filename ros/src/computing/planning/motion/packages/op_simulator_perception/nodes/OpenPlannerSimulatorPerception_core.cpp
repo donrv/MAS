@@ -98,62 +98,63 @@ void OpenPlannerSimulatorPerception::callbackGetSimuData(const geometry_msgs::Po
 		}
 	}
 
-	lidar_tracker::CloudCluster c = GenerateSimulatedObstacleCluster(msg.poses.at(2).position.y, msg.poses.at(2).position.x, msg.poses.at(2).position.y, 50, msg.poses.at(1));
+	lidar_tracker::CloudCluster c = GenerateSimulatedObstacleCluster(msg.poses.at(2).position.x, msg.poses.at(2).position.y, msg.poses.at(2).position.z, 50, msg.poses.at(1));
 	c.id = obj_id;
 
 	if(index >= 0) // update existing
 	{
 		m_ObjClustersArray.clusters.at(index) = c;
-		m_keepTime.at(index).second = 10;
+		m_keepTime.at(index).second = OBJECT_KEEP_TIME;
 	//	ROS_INFO("Update Obj ID = %d", c.id);
 	}
 	else
 	{
 		m_ObjClustersArray.clusters.push_back(c);
-		m_keepTime.push_back(make_pair(c.id, 10));
+		m_keepTime.push_back(make_pair(c.id, OBJECT_KEEP_TIME));
 	//	ROS_INFO("Insert Obj ID = %d", c.id);
 	}
-
-//	geometry_msgs::Pose p;
-//	p.position.x  = msg->pose.position.x + m_OriginPos.position.x;
-//	p.position.y  = msg->pose.position.y + m_OriginPos.position.y;
-//	p.position.z  = msg->pose.position.z + m_OriginPos.position.z;
-//	p.orientation = msg->pose.orientation;
-
-	//m_SimParams.startPose =  PlannerHNS::WayPoint(p.position.x, p.position.y, p.position.z , tf::getYaw(p.orientation));
-
 }
 
-lidar_tracker::CloudCluster OpenPlannerSimulatorPerception::GenerateSimulatedObstacleCluster(const double& x_rand, const double& y_rand, const double& z_rand, const int& nPoints, const geometry_msgs::Pose& centerPose)
+lidar_tracker::CloudCluster OpenPlannerSimulatorPerception::GenerateSimulatedObstacleCluster(const double& width, const double& length, const double& height, const int& nPoints, const geometry_msgs::Pose& centerPose)
 {
 	lidar_tracker::CloudCluster cluster;
 
 	cluster.centroid_point.point.x = centerPose.position.x;
 	cluster.centroid_point.point.y = centerPose.position.y;
 	cluster.centroid_point.point.z = centerPose.position.z;
+	double yaw_angle = tf::getYaw(centerPose.orientation);
+	//cout << "Obstacle Direction Angle: " << yaw_angle << endl;
 
-	cluster.dimensions.x = x_rand;
-	cluster.dimensions.y = y_rand;
-	cluster.dimensions.z = z_rand;
+	cluster.dimensions.x = length;
+	cluster.dimensions.y = width;
+	cluster.dimensions.z = height;
 	pcl::PointCloud<pcl::PointXYZ> point_cloud;
+
+	PlannerHNS::Mat3 rotationMat(yaw_angle);
+	PlannerHNS::Mat3 translationMat(centerPose.position.x, centerPose.position.y);
 
 	timespec t;
 	for(int i=1; i < nPoints; i++)
 	{
 		UtilityHNS::UtilityH::GetTickCount(t);
-		pcl::PointXYZ p;
+		PlannerHNS::WayPoint center_p;
+		srand(t.tv_nsec);
+		center_p.pos.x = ((double)(rand()%100)/100.0 - 0.5)* length;
+
 		srand(t.tv_nsec/i);
-		double x = (double)(rand()%100)/100.0 - 0.5;
+		center_p.pos.y = ((double)(rand()%100)/100.0 - 0.5)* width;
 
 		srand(t.tv_nsec/i*i);
-		double y = (double)(rand()%100)/100.0 - 0.5;
+		center_p.pos.z = ((double)(rand()%100)/100.0 - 0.5)* height;
 
-		srand(t.tv_nsec);
-		double z = (double)(rand()%100)/100.0 - 0.5;
+		center_p.pos = rotationMat*center_p.pos;
+		center_p.pos = translationMat*center_p.pos;
 
-		p.x = centerPose.position.x + x*x_rand;
-		p.y = centerPose.position.y + y*y_rand;
-		p.z = centerPose.position.z + z*z_rand;
+		pcl::PointXYZ p;
+		p.x = center_p.pos.x;
+		p.y = center_p.pos.y;
+		p.z = center_p.pos.z;
+
 		point_cloud.points.push_back(p);
 	}
 
@@ -165,7 +166,7 @@ lidar_tracker::CloudCluster OpenPlannerSimulatorPerception::GenerateSimulatedObs
 void OpenPlannerSimulatorPerception::MainLoop()
 {
 
-	ros::Rate loop_rate(15);
+	ros::Rate loop_rate(25);
 
 	while (ros::ok())
 	{

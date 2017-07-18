@@ -106,7 +106,7 @@ public:
 	void LocalizeMe(const double& dt); // in seconds
 	void UpdateState(const VehicleState& state, const bool& bUseDelay = false);
 	void CalculateImportantParameterForDecisionMaking(const VehicleState& car_state,
-			const int& goalID, const bool& bEmergencyStop, const bool& bGreenTrafficLight,
+			const int& goalID, const bool& bEmergencyStop, const vector<TrafficLight>& detectedLights,
 			const TrajectoryCost& bestTrajectory);
 
 	BehaviorState DoOneStep(
@@ -116,7 +116,7 @@ public:
 			const int& goalID,
 			RoadNetwork& map,
 			const bool& bEmergencyStop,
-			const bool& bGreenTrafficLight,
+			const std::vector<TrafficLight>& trafficLight,
 			const bool& bLive = false);
 
 	void SimulateOdoPosition(const double& dt, const VehicleState& vehicleState);

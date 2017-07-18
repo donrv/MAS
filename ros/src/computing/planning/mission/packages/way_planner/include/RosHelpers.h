@@ -48,11 +48,15 @@ public:
 	MSG_TYPE type;
 	std::vector<PlannerHNS::ACTION_TYPE> options;
 	PlannerHNS::ACTION_TYPE current;
+	std::vector<std::string> destinations;
+	int next_destination_id;
+
 	int currID;
 	bool bErr;
 	std::string err_msg;
 	HMI_MSG()
 	{
+		next_destination_id = -1;
 		currID = -1;
 		type = OPTIONS_MSG;
 		current = PlannerHNS::FORWARD_ACTION;
@@ -63,7 +67,7 @@ public:
 	{
 		HMI_MSG recieved_msg;
 		std::vector<std::string> sections = SplitString(msg, ",");
-		if (sections.size() == 6)
+		if (sections.size() == 8)
 		{
 			int type_str = atoi(sections.at(0).c_str());
 			switch (type_str)
@@ -95,10 +99,18 @@ public:
 					recieved_msg.options.push_back(PlannerHNS::LEFT_TURN_ACTION);
 				else if (idirect == 4)
 					recieved_msg.options.push_back(PlannerHNS::RIGHT_TURN_ACTION);
+				else if (idirect == 2)
+					recieved_msg.options.push_back(PlannerHNS::STOP_ACTION);
+				else if (idirect == 8)
+					recieved_msg.options.push_back(PlannerHNS::START_ACTION);
 			}
 			recieved_msg.currID = atoi(sections.at(3).c_str());
 			recieved_msg.bErr = atoi(sections.at(4).c_str());
 			recieved_msg.err_msg = sections.at(5);
+			recieved_msg.next_destination_id = atoi(sections.at(6).c_str());
+
+			recieved_msg.destinations = SplitString(sections.at(7), ";");
+
 		}
 		return recieved_msg;
 	}
@@ -117,6 +129,27 @@ public:
 		}
 
 		return str_parts;
+	}
+
+	std::string CreateStringMessage()
+	{
+		std::ostringstream oss;
+		oss << type << ",";
+		for(unsigned int i=0; i< options.size(); i++)
+			oss << options.at(i) << ";";
+
+		  oss << "," << current;
+		  oss << "," << currID;
+		  oss << "," << bErr ;
+		  oss << "," << err_msg;
+		  oss << "," << next_destination_id << ",";
+
+		  for(unsigned int i=0; i< destinations.size(); i++)
+			  oss << destinations.at(i) << ";";
+
+		  oss << ",";
+
+		  return oss.str();
 	}
 };
 

@@ -6,7 +6,9 @@
  */
 
 #include "RSPlanner.h"
-#include "GridMap.h"
+#include "GridWorld.h"
+#include "PlannerCommonDef.h"
+#include "HybridPlanner.h"
 
 #define START_POINT_MAX_DISTANCE 3 // meters
 #define GOAL_POINT_MAX_DISTANCE 3 // meters
@@ -33,7 +35,7 @@ public:
 	 * @param generatedPath: pointer to return the smooth trajectory. - Better Not to use this
 	 * @return path length
 	 */
-	double PlanUsingReedSheppWithObstacleDetection(const WayPoint& start, const WayPoint& goal, GridMap& map, std::vector<WayPoint>& genSmoothedPath,
+	double PlanUsingReedSheppWithObstacleDetection(const WayPoint& start, const WayPoint& goal, GridWorld& map, std::vector<WayPoint>& genSmoothedPath,
 			const double pathDensity = 0.25, const double smoothFactor = 12.0);
 
 	/**
@@ -106,9 +108,12 @@ public:
 	 * @param paths
 	 * @return
 	 */
-	double PredictPlanUsingDP(Lane* lane, const WayPoint& carPos, const double& maxPlanningDistance,
-			std::vector<std::vector<WayPoint> >& paths);
+	double PredictPlanUsingDP(Lane* lane, const WayPoint& carPos, const double& maxPlanningDistance, std::vector<std::vector<WayPoint> >& paths);
 
+	double PredictPlanUsingDP(const WayPoint& startPose, WayPoint* closestWP, const double& maxPlanningDistance, std::vector<std::vector<WayPoint> >& paths, const bool& bFindBranches = true);
+
+	double PlanUsingAStar(const WayPoint& start, const WayPoint& goal, GridWorld& map, std::vector<WayPoint>& genSmoothedPath, CAR_BASIC_INFO carInfo,
+				const double pathDensity = 0.25, const double smoothFactor = 12.0);
 	void DeleteWaypoints(std::vector<WayPoint*>& wps);
 
 	//PlanningInternalParams m_Params;

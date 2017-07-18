@@ -252,9 +252,9 @@ int PlanningHelpers::GetClosestNextPointIndex(const vector<WayPoint>& trajectory
 		GPSPoint curr, next;
 		curr = trajectory.at(min_index).pos;
 		next = trajectory.at(min_index+1).pos;
-		POINT2D v_1(p.pos.x - curr.x   ,p.pos.y - curr.y);
+		GPSPoint v_1(p.pos.x - curr.x   ,p.pos.y - curr.y,0,0);
 		double norm1 = pointNorm(v_1);
-		POINT2D v_2(next.x - curr.x,next.y - curr.y);
+		GPSPoint v_2(next.x - curr.x,next.y - curr.y,0,0);
 		double norm2 = pointNorm(v_2);
 		double dot_pro = v_1.x*v_2.x + v_1.y*v_2.y;
 		double a = UtilityH::FixNegativeAngle(acos(dot_pro/(norm1*norm2)));
@@ -289,9 +289,9 @@ int PlanningHelpers::GetClosestNextPointIndexDirection(const vector<WayPoint>& t
 		GPSPoint curr, next;
 		curr = trajectory.at(min_index).pos;
 		next = trajectory.at(min_index+1).pos;
-		POINT2D v_1(p.pos.x - curr.x   ,p.pos.y - curr.y);
+		GPSPoint v_1(p.pos.x - curr.x   ,p.pos.y - curr.y,0,0);
 		double norm1 = pointNorm(v_1);
-		POINT2D v_2(next.x - curr.x,next.y - curr.y);
+		GPSPoint v_2(next.x - curr.x,next.y - curr.y,0,0);
 		double norm2 = pointNorm(v_2);
 		double dot_pro = v_1.x*v_2.x + v_1.y*v_2.y;
 		double a = UtilityH::FixNegativeAngle(acos(dot_pro/(norm1*norm2)));
@@ -508,7 +508,7 @@ WayPoint PlanningHelpers::GetNextPointOnTrajectory_obsolete(const vector<WayPoin
 	p2 = trajectory.at(local_currIndex);
 	p1 = trajectory.at(local_currIndex+1);
 
-	POINT2D uv(p1.pos.x - p2.pos.x, p1.pos.y - p2.pos.y);
+	GPSPoint uv(p1.pos.x - p2.pos.x, p1.pos.y - p2.pos.y ,0,0);
 	double v_norm = pointNorm(uv);
 
 	assert(v_norm != 0);
@@ -672,8 +672,19 @@ void PlanningHelpers::CreateManualBranch(std::vector<WayPoint>& path, const int&
 	PlanningHelpers::SmoothPath(goal_path, 0.25, 0.25);
 	PlanningHelpers::FixPathDensity(goal_path, 0.75);
 	PlanningHelpers::SmoothPath(goal_path, 0.25, 0.35);
+
 	path.erase(path.end()-5, path.end());
 	path.insert(path.end(), goal_path.begin(), goal_path.end());
+
+	PlanningHelpers::CalcAngleAndCost(path);
+
+	for(unsigned int i=0; i < path.size(); i++)
+	{
+		if(direction == FORWARD_LEFT_DIR)
+			path.at(i).behavior = BRANCH_LEFT_STATE;
+		if(direction == FORWARD_RIGHT_DIR)
+			path.at(i).behavior = BRANCH_RIGHT_STATE;
+	}
 
 
 }
@@ -1822,6 +1833,9 @@ WayPoint* PlanningHelpers::GetMinCostCell(const vector<WayPoint*>& cells, const 
 
 void PlanningHelpers::ExtractPlanAlernatives(const std::vector<WayPoint>& singlePath, std::vector<std::vector<WayPoint> >& allPaths)
 {
+	if(singlePath.size() == 0)
+		return;
+
 	allPaths.clear();
 	std::vector<WayPoint> path;
 	path.push_back(singlePath.at(0));

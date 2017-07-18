@@ -28,8 +28,8 @@
  *  OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#ifndef OpenPlannerSimulatorPerception_CORE_H
-#define OpenPlannerSimulatorPerception_CORE_H
+#ifndef OpenPlannerSimulatorSigns_CORE_H
+#define OpenPlannerSimulatorSigns_CORE_H
 
 #define _ENABLE_ZMP_LIBRARY_LINK
 
@@ -50,54 +50,77 @@
 #include <std_msgs/Bool.h>
 #include <std_msgs/Float32.h>
 
-#include <lidar_tracker/CloudCluster.h>
-#include <lidar_tracker/CloudClusterArray.h>
+#include <road_wizard/Signals.h>
+#include <road_wizard/ExtractedPosition.h>
 #include <geometry_msgs/PoseArray.h>
+#include <RoadNetwork.h>
+#include <MappingHelpers.h>
 
-#define OBJECT_KEEP_TIME 1
 
-namespace OpenPlannerSimulatorPerceptionNS
+namespace OpenPlannerSimulatorSignsNS
 {
 
-class DetectionCommandParams
+class SignsCommandParams
 {
 public:
-	int 	nSimuObjs;
-	double 	errFactor;
+	std::vector<int>  	firstSignsIds;
+	std::vector<int>	secondSignsIds;
+	double firstGreenTime;
+	double secondGreenTime;
+	double firstyellowTime;
+	double secondyellowTime;
 
-	DetectionCommandParams()
+	void SetCommandParams(const std::string& firstSet, const std::string& secondSet)
 	{
-		nSimuObjs = 3;
-		errFactor = 0;
+		std::vector<std::string> s_list = PlannerHNS::MappingHelpers::SplitString(firstSet, ",");
+		for(unsigned int i=0; i < s_list.size(); i++)
+		{
+			if(s_list.at(i).size()>0)
+			{
+				firstSignsIds.push_back(strtol(s_list.at(i).c_str(), NULL, 10));
+			}
+		}
+
+		s_list = PlannerHNS::MappingHelpers::SplitString(secondSet, ",");
+		for(unsigned int i=0; i < s_list.size(); i++)
+			if(s_list.at(i).size()>0)
+			{
+
+				secondSignsIds.push_back(strtol(s_list.at(i).c_str(), NULL, 10));
+			}
+	}
+
+	SignsCommandParams()
+	{
+		firstGreenTime = 10;
+		secondGreenTime = 10;
+		firstyellowTime = 1;
+		secondyellowTime = 1;
 	}
 };
 
-class OpenPlannerSimulatorPerception
+class OpenPlannerSimulatorSigns
 {
+public:
+	road_wizard::Signals m_FirstSignals;
+	road_wizard::Signals m_SecondSignals;
+
 protected:
 	ros::NodeHandle nh;
 	timespec m_Timer;
-	DetectionCommandParams m_DecParams;
-
-	lidar_tracker::CloudClusterArray m_ObjClustersArray;
-	std::vector<std::pair<int, double> > m_keepTime;
-
-	ros::Publisher pub_DetectedObjects;
-
-	// define subscribers.
-	std::vector<ros::Subscriber> sub_objs;
+	PlannerHNS::TrafficLightState m_CurrLightState;
+	SignsCommandParams m_Params;
 
 
-	// Callback function for subscriber.
-	void callbackGetSimuData(const geometry_msgs::PoseArray &msg);
+
+	ros::Publisher pub_trafficLights;
 
 public:
-	OpenPlannerSimulatorPerception();
-	virtual ~OpenPlannerSimulatorPerception();
-	lidar_tracker::CloudCluster GenerateSimulatedObstacleCluster(const double& width, const double& length, const double& height, const int& nPoints, const geometry_msgs::Pose& centerPose);
+	OpenPlannerSimulatorSigns();
+	virtual ~OpenPlannerSimulatorSigns();
 	void MainLoop();
 };
 
 }
 
-#endif  // OpenPlannerSimulatorPerception_H
+#endif  // OpenPlannerSimulatorSigns_H

@@ -25,6 +25,7 @@ public:
 	static std::string LoggingMainfolderName;
 	static std::string ControlLogFolderName;
 	static std::string PathLogFolderName;
+	static std::string GlobalPathLogFolderName;
 	static std::string StatesLogFolderName;
 	static std::string SimulationFolderName;
 	static std::string KmlMapsFolderName;
@@ -134,6 +135,7 @@ public:
 		double a;
 		double c;
 		double v;
+		std::string name;
 	};
 
 	struct SimulationData

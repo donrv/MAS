@@ -40,7 +40,8 @@
 #include <geometry_msgs/PoseArray.h>
 #include <nav_msgs/Odometry.h>
 #include <nav_msgs/OccupancyGrid.h>
-
+#include <road_wizard/Signals.h>
+#include <runtime_manager/traffic_light.h>
 #include <tf/transform_broadcaster.h>
 #include <tf/transform_listener.h>
 #include <tf/tf.h>
@@ -56,6 +57,7 @@
 #include <jsk_recognition_msgs/BoundingBox.h>
 #include <jsk_recognition_msgs/BoundingBoxArray.h>
 
+#include "BehaviorPrediction.h"
 #include "RoadNetwork.h"
 #include "MappingHelpers.h"
 #include "PlanningHelpers.h"
@@ -63,6 +65,7 @@
 #include "LocalPlannerH.h"
 #include "RosHelpers.h"
 #include "SimpleTracker.h"
+
 
 #include <opencv/cv.h>
 #include <cv_bridge/cv_bridge.h>
@@ -102,6 +105,7 @@ protected:
 	int m_frequency;
 
 protected:
+	//PlannerHNS::BehaviorPrediction m_ParticlePred;
 	SimulationNS::SimpleTracker m_ObstacleTracking;
 	//SimulationNS::CarState m_State;
 	PlannerHNS::LocalPlannerH m_LocalPlanner;
@@ -117,6 +121,8 @@ protected:
 	std::vector<PlannerHNS::DetectedObject> m_OriginalClusters;
 	std::vector<PlannerHNS::DetectedObject> m_TrackedClusters;
 	std::vector<PlannerHNS::DetectedObject> m_DetectedBoxes;
+	std::vector<PlannerHNS::DetectedObject> m_AllObstacles;
+
 	bool bNewClusters;
 	jsk_recognition_msgs::BoundingBoxArray m_BoundingBoxes;
 	bool bNewBoxes;
@@ -127,8 +133,11 @@ protected:
 	bool bNewEmergency;
 	int m_bEmergencyStop;
 
-	bool bNewTrafficLigh;
-	bool m_bGreenLight;
+	bool bNewLightStatus;
+	bool bNewLightSignal;
+	PlannerHNS::TrafficLightState  m_CurrLightStatus;
+	std::vector<PlannerHNS::TrafficLight> m_CurrTrafficLight;
+	std::vector<PlannerHNS::TrafficLight> m_PrevTrafficLight;
 
 	bool bNewOutsideControl;
 	int m_bOutsideControl;
@@ -143,7 +152,7 @@ protected:
 
 	//Planning Related variables
 	PlannerHNS::BehaviorState m_CurrentBehavior;
-	PlannerHNS::BehaviorState m_PrevBehavior;
+	//PlannerHNS::BehaviorState m_PrevBehavior;
 	//PlannerHNS::WayPoint m_CurrentGoal;
 	struct timespec m_PlanningTimer;
 	AutowareRoadNetwork m_AwMap;
@@ -152,6 +161,7 @@ protected:
   	bool	bKmlMapLoaded;
   	std::string m_KmlMapPath;
 
+  	bool m_bEnableCurbObstacles;
   	bool m_bEnableTracking;
   	bool m_bEnableOutsideControl;
 
@@ -159,6 +169,21 @@ protected:
   	std::vector<PlannerHNS::DetectedObject> curr_curbs_obstacles;
 
   	std::vector<std::string>    m_LogData;
+
+  	std::vector<visualization_msgs::MarkerArray> m_DetectedPolygonsDummy;
+  	std::vector<visualization_msgs::MarkerArray> m_DetectedPolygonsActual;
+  	visualization_msgs::MarkerArray m_PredictedTrajectoriesDummy;
+  	visualization_msgs::MarkerArray m_PredictedTrajectoriesActual;
+
+  	int m_nDetectedObjRepresentations;
+  	int m_nDummyObjPerRep;
+  	long m_NextObjId;
+
+protected: //Global Markers
+  	visualization_msgs::MarkerArray m_DetectedPolygonsAllMarkers;
+  	visualization_msgs::MarkerArray m_AllRollouts;
+  	waypoint_follower_msgs::lane m_CurrentTrajectoryToSend;
+
 
 
 protected:
@@ -180,6 +205,8 @@ protected:
 	ros::Publisher pub_DetectedPolygonsRviz;
 	ros::Publisher pub_TrackedObstaclesRviz;
 	ros::Publisher pub_LocalTrajectoriesRviz;
+	ros::Publisher pub_PredictedTrajectoriesRviz;
+	ros::Publisher pub_ParticlesRviz;
 	ros::Publisher pub_TestLineRviz;
 	ros::Publisher pub_BehaviorStateRviz;
 	ros::Publisher pub_SafetyBorderRviz;
@@ -196,7 +223,8 @@ protected:
 	ros::Subscriber sub_robot_odom			;
 	ros::Subscriber sub_can_info			;
 	ros::Subscriber sub_EmergencyStop		;
-	ros::Subscriber sub_TrafficLight		;
+	ros::Subscriber sub_TrafficLightStatus	;
+	ros::Subscriber sub_TrafficLightSignals	;
 	ros::Subscriber sub_OutsideControl		;
 	ros::Subscriber sub_AStarPath			;
 	ros::Subscriber sub_WayPlannerPaths		;
@@ -221,7 +249,8 @@ protected:
 	void callbackGetCanInfo(const vehicle_socket::CanInfoConstPtr &msg);
 	void callbackGetRobotOdom(const nav_msgs::OdometryConstPtr& msg);
 	void callbackGetEmergencyStop(const std_msgs::Int8& msg);
-	void callbackGetTrafficLight(const std_msgs::Int8& msg);
+	void callbackGetTrafficLightStatus(const runtime_manager::traffic_light& msg);
+	void callbackGetTrafficLightSignals(const road_wizard::Signals& msg);
 	void callbackGetOutsideControl(const std_msgs::Int8& msg);
 	void callbackGetAStarPath(const waypoint_follower_msgs::LaneArrayConstPtr& msg);
 	void callbackGetWayPlannerPath(const waypoint_follower_msgs::LaneArrayConstPtr& msg);
@@ -250,6 +279,9 @@ protected:
 
   lidar_tracker::CloudCluster GenerateSimulatedObstacleCluster(const double& x_rand, const double& y_rand, const double& z_rand, const int& nPoints, const geometry_msgs::PointStamped& centerPose);
   void GenerateCurbsObstacles(std::vector<PlannerHNS::DetectedObject>& curb_obstacles);
+  void LogLocalPlanningInfo(double dt);
+  void VisualizeLocalPlanner();
+  void SendLocalPlanningTopics();
 
 #ifdef DATASET_GENERATION_BLOCK
 private:
@@ -277,6 +309,7 @@ private:
   void WriteImageAndPathCSV(cv::Mat img, std::vector<PlannerHNS::WayPoint>& path);
 
 #endif
+
 
 };
 

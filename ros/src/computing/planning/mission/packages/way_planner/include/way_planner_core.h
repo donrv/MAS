@@ -151,12 +151,15 @@ protected:
 	//bool bUsingCurrentPose;
 	int m_iCurrentGoalIndex;
 	std::vector<PlannerHNS::WayPoint> m_GoalsPos;
+	std::vector<std::string> m_GoalsNames;
 	//bool bGoalPos;
 	geometry_msgs::Pose m_OriginPos;
 	PlannerHNS::VehicleState m_VehicleState;
 
 
 	std::vector<geometry_msgs::PoseStamped> m_NodesList;
+
+	PlannerHNS::ACTION_TYPE m_NextAction;
 
 	ros::NodeHandle nh;
 
@@ -215,7 +218,8 @@ private:
   	void UpdateRoadMap(const AutowareRoadNetwork& src_map, PlannerHNS::RoadNetwork& out_map);
   	bool GenerateGlobalPlan(PlannerHNS::WayPoint& startPoint, PlannerHNS::WayPoint& goalPoint, std::vector<std::vector<PlannerHNS::WayPoint> >& generatedTotalPaths);
   	void VisualizeAndSend(const std::vector<std::vector<PlannerHNS::WayPoint> > generatedTotalPaths);
-
+  	void SaveSimulationData();
+  	int LoadSimulationData();
 
 
   private: //debug variables

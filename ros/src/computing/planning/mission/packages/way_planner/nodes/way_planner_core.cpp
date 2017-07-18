@@ -61,6 +61,7 @@ way_planner_core::way_planner_core()
 	m_pCurrGoal = 0;
 	m_iCurrentGoalIndex = 1;
 	m_bKmlMap = false;
+	m_NextAction = PlannerHNS::START_ACTION;
 	//bStartPos = false;
 	//bGoalPos = false;
 	//bUsingCurrentPose = false;
@@ -113,16 +114,15 @@ if(m_params.bEnableHMI)
 
 	/** @todo To achieve perfection , you need to start sometime */
 
-	//if(m_params.bEnableRvizInput)
+	if(m_params.bEnableRvizInput)
 	{
 		sub_start_pose 	= nh.subscribe("/initialpose", 					1, &way_planner_core::callbackGetStartPose, 		this);
 		sub_goal_pose 	= nh.subscribe("move_base_simple/goal", 		1, &way_planner_core::callbackGetGoalPose, 		this);
 	}
-//	else
-//	{
-//		sub_start_pose 	= nh.subscribe("/GlobalStartPose", 				1, &way_planner_core::callbackGetStartPose, 		this);
-//		sub_goal_pose 	= nh.subscribe("/GlobalGoalPose", 				1, &way_planner_core::callbackGetGoalPose, 		this);
-//	}
+	else
+	{
+		LoadSimulationData();
+	}
 
 	sub_current_pose 		= nh.subscribe("/current_pose", 			100,	&way_planner_core::callbackGetCurrentPose, 		this);
 
@@ -148,7 +148,10 @@ if(m_params.bEnableHMI)
 	}
 }
 
-way_planner_core::~way_planner_core(){
+way_planner_core::~way_planner_core()
+{
+	if(m_params.bEnableRvizInput)
+		SaveSimulationData();
 }
 
 void way_planner_core::callbackGetGoalPose(const geometry_msgs::PoseStampedConstPtr &msg)
@@ -374,7 +377,7 @@ void way_planner_core::UpdateRoadMap(const AutowareRoadNetwork& src_map, Planner
 bool way_planner_core::GenerateGlobalPlan(PlannerHNS::WayPoint& startPoint, PlannerHNS::WayPoint& goalPoint, std::vector<std::vector<PlannerHNS::WayPoint> >& generatedTotalPaths)
 {
 
-	generatedTotalPaths.clear();
+
 #ifdef ENABLE_VISUALIZE_PLAN
 	if(m_PlanningVisualizeTree.size() > 0)
 	{
@@ -393,21 +396,44 @@ bool way_planner_core::GenerateGlobalPlan(PlannerHNS::WayPoint& startPoint, Plan
 
 #else
 	std::vector<int> predefinedLanesIds;
+	double ret = 0;
+	if(m_params.bEnableHMI)
+	{
+		if(m_NextAction == PlannerHNS::STOP_ACTION)
+		{
+			generatedTotalPaths.clear();
+			ret = m_PlannerH.PlanUsingDPRandom(startPoint, 30, m_Map, generatedTotalPaths);
+			m_params.bEnableReplanning = false;
+		}
+		else
+		{
+			ret = m_PlannerH.PlanUsingDP(startPoint, goalPoint,
+									MAX_GLOBAL_PLAN_DISTANCE, m_params.bEnableLaneChange,
+									predefinedLanesIds,
+									m_Map, generatedTotalPaths);
 
-	double ret = m_PlannerH.PlanUsingDP(startPoint, goalPoint,
-					MAX_GLOBAL_PLAN_DISTANCE, m_params.bEnableLaneChange,
-					predefinedLanesIds,
-					m_Map, generatedTotalPaths);
+		}
+		for(unsigned int im = 0; im < m_ModifiedWayPointsCosts.size(); im++)
+			m_ModifiedWayPointsCosts.at(im)->actionCost.at(0).second = 0;
+
+		m_ModifiedWayPointsCosts.clear();
+	}
+	else
+	{
+		ret = m_PlannerH.PlanUsingDP(startPoint, goalPoint,
+						MAX_GLOBAL_PLAN_DISTANCE, m_params.bEnableLaneChange,
+						predefinedLanesIds,
+						m_Map, generatedTotalPaths);
+	}
+
 #endif
 
-if(m_params.bEnableHMI)
-{
-	for(unsigned int im = 0; im < m_ModifiedWayPointsCosts.size(); im++)
-		m_ModifiedWayPointsCosts.at(im)->actionCost.at(0).second = 0;
-
-	m_ModifiedWayPointsCosts.clear();
-}
-	if(ret == 0) generatedTotalPaths.clear();
+	if(ret == 0)
+	{
+		std::cout << "Can't Generate Global Path for Start (" << startPoint.pos.ToString()
+									<< ") and Goal (" << goalPoint.pos.ToString() << ")" << std::endl;
+		return false;
+	}
 
 
 	if(generatedTotalPaths.size() > 0 && generatedTotalPaths.at(0).size()>0)
@@ -463,6 +489,7 @@ void way_planner_core::VisualizeAndSend(const std::vector<std::vector<PlannerHNS
 		std::ostringstream str_out;
 		str_out << UtilityHNS::UtilityH::GetHomeDirectory();
 		str_out << UtilityHNS::DataRW::LoggingMainfolderName;
+		str_out << UtilityHNS::DataRW::GlobalPathLogFolderName;
 		str_out << "GlobalPath_";
 		str_out << i;
 		str_out << "_";
@@ -554,7 +581,6 @@ void way_planner_core::CreateNextPlanningTreeLevelMarker(std::vector<PlannerHNS:
 
 #endif
 
-
 bool way_planner_core::HMI_DoOneStep()
 {
 	double min_distance = m_AvgResponseTime * m_VehicleState.speed;
@@ -575,19 +601,19 @@ bool way_planner_core::HMI_DoOneStep()
 		for(unsigned int i = 0; i< branches.size(); i++)
 			msg.options.push_back(branches.at(i)->actionCost.at(0).first);
 
-		std::cout << "Send Message (" <<  branches.size() << ") Branches (" ;
-		for(unsigned int i=0; i< branches.size(); i++)
-		{
-			if(branches.at(i)->actionCost.at(0).first == PlannerHNS::FORWARD_ACTION)
-				std::cout << "F,";
-			else if(branches.at(i)->actionCost.at(0).first == PlannerHNS::LEFT_TURN_ACTION)
-				std::cout << "L,";
-			else if(branches.at(i)->actionCost.at(0).first == PlannerHNS::RIGHT_TURN_ACTION)
-				std::cout << "R,";
+		//std::cout << "Send Message (" <<  branches.size() << ") Branches (" ;
+//		for(unsigned int i=0; i< branches.size(); i++)
+//		{
+//			if(branches.at(i)->actionCost.at(0).first == PlannerHNS::FORWARD_ACTION)
+//				//std::cout << "F,";
+//			else if(branches.at(i)->actionCost.at(0).first == PlannerHNS::LEFT_TURN_ACTION)
+//				//std::cout << "L,";
+//			else if(branches.at(i)->actionCost.at(0).first == PlannerHNS::RIGHT_TURN_ACTION)
+//				//std::cout << "R,";
+//
+//		}
 
-		}
-
-		std::cout << ")" << std::endl;
+		//std::cout << ")" << std::endl;
 
 		int close_index = PlannerHNS::PlanningHelpers::GetClosestNextPointIndex(m_GeneratedTotalPaths.at(0), startPoint);
 
@@ -631,18 +657,44 @@ bool way_planner_core::HMI_DoOneStep()
 
 		}
 
+		msg.next_destination_id = m_iCurrentGoalIndex;
+		msg.destinations = m_GoalsNames;
+
 		m_SocketServer.SendMSG(msg);
+	}
+
 
 		double total_d = 0;
-		for(unsigned int iwp =1; iwp < m_GeneratedTotalPaths.at(0).size(); iwp++)
+		if(m_GeneratedTotalPaths.size()>0)
 		{
-			total_d += hypot(m_GeneratedTotalPaths.at(0).at(iwp).pos.y - m_GeneratedTotalPaths.at(0).at(iwp-1).pos.y, m_GeneratedTotalPaths.at(0).at(iwp).pos.x - m_GeneratedTotalPaths.at(0).at(iwp-1).pos.x);
+			for(unsigned int iwp =1; iwp < m_GeneratedTotalPaths.at(0).size(); iwp++)
+			{
+				total_d += hypot(m_GeneratedTotalPaths.at(0).at(iwp).pos.y - m_GeneratedTotalPaths.at(0).at(iwp-1).pos.y, m_GeneratedTotalPaths.at(0).at(iwp).pos.x - m_GeneratedTotalPaths.at(0).at(iwp-1).pos.x);
+			}
 		}
 
 		HMI_MSG inc_msg;
 		int bNew = m_SocketServer.GetLatestMSG(inc_msg);
 		if(bNew>0)
 		{
+
+			for(unsigned int j = 0; j< inc_msg.options.size(); j++)
+			{
+
+				if(inc_msg.options.at(j) == PlannerHNS::START_ACTION)
+				{
+					m_NextAction = PlannerHNS::START_ACTION;
+					m_params.bEnableReplanning = true;
+					std::cout << "GO Go Go  Action ! " << inc_msg.options.at(j) <<  std::endl;
+
+				}
+				else if(inc_msg.options.at(j) == PlannerHNS::STOP_ACTION && m_NextAction != PlannerHNS::STOP_ACTION)
+				{
+					std::cout << "Stop Action ! " << std::endl;
+					m_NextAction = PlannerHNS::STOP_ACTION;
+				}
+			}
+
 			for(unsigned int i = 0; i< branches.size(); i++)
 			{
 				for(unsigned int j = 0; j< inc_msg.options.size(); j++)
@@ -655,11 +707,75 @@ bool way_planner_core::HMI_DoOneStep()
 				}
 			}
 
+			if(inc_msg.next_destination_id > -1 && inc_msg.next_destination_id < m_GoalsPos.size())
+			{
+				m_iCurrentGoalIndex = inc_msg.next_destination_id;
+			}
+
+			std::cout << "Change Destination to " << inc_msg.next_destination_id  << std::endl;
+
 			return true;
 		}
-	}
 
 	return false;
+}
+
+void way_planner_core::SaveSimulationData()
+{
+	std::vector<std::string> simulationDataPoints;
+	std::ostringstream startStr;
+	startStr << m_CurrentPose.pos.x << "," << m_CurrentPose.pos.y << "," << m_CurrentPose.pos.z << "," << m_CurrentPose.pos.a << ","<< m_CurrentPose.cost << "," << 0 << ",";
+	simulationDataPoints.push_back(startStr.str());
+
+	for(unsigned int i=0; i < m_GoalsPos.size(); i++)
+	{
+		std::ostringstream goalStr;
+		goalStr << m_GoalsPos.at(i).pos.x << "," << m_GoalsPos.at(i).pos.y << "," << m_GoalsPos.at(i).pos.z << "," << m_GoalsPos.at(i).pos.a << "," << 0 << "," << 0 << ",destination_" << i+1 << ",";
+		simulationDataPoints.push_back(goalStr.str());
+	}
+
+	std::string header = "X,Y,Z,A,C,V,name,";
+
+	std::ostringstream fileName;
+	fileName << UtilityHNS::UtilityH::GetHomeDirectory()+UtilityHNS::DataRW::LoggingMainfolderName+UtilityHNS::DataRW::SimulationFolderName;
+	fileName << "EgoCar.csv";
+	std::ofstream f(fileName.str().c_str());
+
+	if(f.is_open())
+	{
+		if(header.size() > 0)
+			f << header << "\r\n";
+		for(unsigned int i = 0 ; i < simulationDataPoints.size(); i++)
+			f << simulationDataPoints.at(i) << "\r\n";
+	}
+
+	f.close();
+}
+
+int way_planner_core::LoadSimulationData()
+{
+	std::ostringstream fileName;
+	fileName << "EgoCar.csv";
+
+	std::string simuDataFileName = UtilityHNS::UtilityH::GetHomeDirectory()+UtilityHNS::DataRW::LoggingMainfolderName+UtilityHNS::DataRW::SimulationFolderName + fileName.str();
+	UtilityHNS::SimulationFileReader sfr(simuDataFileName);
+	UtilityHNS::SimulationFileReader::SimulationData data;
+
+	int nData = sfr.ReadAllData(data);
+	if(nData == 0)
+		return 0;
+
+	m_CurrentPose = PlannerHNS::WayPoint(data.startPoint.x, data.startPoint.y, data.startPoint.z, data.startPoint.a);
+	m_GoalsPos.push_back(PlannerHNS::WayPoint(data.goalPoint.x, data.goalPoint.y, data.goalPoint.z, data.goalPoint.a));
+	m_GoalsNames.push_back(data.goalPoint.name);
+
+	for(unsigned int i=0; i < data.simuCars.size(); i++)
+	{
+		m_GoalsPos.push_back(PlannerHNS::WayPoint(data.simuCars.at(i).x, data.simuCars.at(i).y, data.simuCars.at(i).z, data.simuCars.at(i).a));
+		m_GoalsNames.push_back(data.simuCars.at(i).name);
+	}
+
+	return nData;
 }
 
 void way_planner_core::PlannerMainLoop()

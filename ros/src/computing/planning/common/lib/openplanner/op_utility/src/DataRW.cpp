@@ -17,6 +17,7 @@ namespace UtilityHNS
 
 std::string DataRW::LoggingMainfolderName 	= "/SimuLogs/";
 std::string DataRW::ControlLogFolderName 	= "ControlLogs/";
+std::string DataRW::GlobalPathLogFolderName = "GlobalPathLogs/";
 std::string DataRW::PathLogFolderName 		= "TrajectoriesLogs/";
 std::string DataRW::StatesLogFolderName 	= "BehaviorsLogs/";
 std::string DataRW::SimulationFolderName 	= "SimulationData/";
@@ -329,7 +330,7 @@ bool SimulationFileReader::ReadNextLine(SimulationPoint& data)
 	if(ReadSingleLine(lineData))
 	{
 		if(lineData.size()==0) return false;
-		if(lineData.at(0).size() < 5) return false;
+		if(lineData.at(0).size() < 6) return false;
 
 		data.x = strtod(lineData.at(0).at(0).c_str(), NULL);
 		data.y = strtod(lineData.at(0).at(1).c_str(), NULL);
@@ -337,6 +338,7 @@ bool SimulationFileReader::ReadNextLine(SimulationPoint& data)
 		data.a = strtod(lineData.at(0).at(3).c_str(), NULL);
 		data.c = strtod(lineData.at(0).at(4).c_str(), NULL);
 		data.v = strtod(lineData.at(0).at(5).c_str(), NULL);
+		data.name = lineData.at(0).at(6);
 
 		return true;
 

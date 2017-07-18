@@ -42,6 +42,7 @@
 #include <geometry_msgs/PoseWithCovarianceStamped.h>
 #include <geometry_msgs/PoseStamped.h>
 #include <nav_msgs/Odometry.h>
+#include <road_wizard/Signals.h>
 #include <tf/transform_broadcaster.h>
 #include <tf/transform_listener.h>
 #include <tf/tf.h>
@@ -113,6 +114,10 @@ protected:
 	bool bGoalPos;
 	bool bNewClusters;
 
+	bool bNewLightSignal;
+	std::vector<PlannerHNS::TrafficLight> m_CurrTrafficLight;
+	std::vector<PlannerHNS::TrafficLight> m_PrevTrafficLight;
+
 
 	SimuCommandParams m_SimParams;
 	PlannerHNS::CAR_BASIC_INFO m_CarInfo;
@@ -130,11 +135,13 @@ protected:
 	ros::Subscriber sub_initialpose;
 	ros::Subscriber sub_goalpose;
 	ros::Subscriber sub_cloudClusters;
+	ros::Subscriber sub_TrafficLightSignals	;
 
 	// Callback function for subscriber.
 	void callbackGetInitPose(const geometry_msgs::PoseWithCovarianceStampedConstPtr &msg);
 	void callbackGetGoalPose(const geometry_msgs::PoseStampedConstPtr &msg);
 	void callbackGetCloudClusters(const lidar_tracker::CloudClusterArrayConstPtr& msg);
+	void callbackGetTrafficLightSignals(const road_wizard::Signals& msg);
 
 public:
 	OpenPlannerSimulator();

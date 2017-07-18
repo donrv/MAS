@@ -150,17 +150,7 @@ void* HMISocketServer::ThreadMainSend(void* pSock)
 		continue;
 		}
 
-		  std::ostringstream oss;
-		  oss << msg.type << ",";
-		  for(unsigned int i=0; i< msg.options.size(); i++)
-			  oss << msg.options.at(i) << ";";
-
-		  oss << "," << msg.current;
-		  oss << "," << msg.currID;
-		  oss << "," << msg.bErr ;
-		  oss << "," << msg.err_msg << ",";
-
-		  std::string cmd(oss.str());
+		  std::string cmd = msg.CreateStringMessage();
 		  ssize_t n = write(client_sock, cmd.c_str(), cmd.size());
 		  if(n < 0){
 		    std::perror("write");
@@ -175,7 +165,7 @@ void* HMISocketServer::ThreadMainSend(void* pSock)
 			continue;
 		  }
 
-		  std::cout << "cmd: " << cmd << ", size: " << cmd.size() << std::endl;
+		 // std::cout << "cmd: " << cmd << ", size: " << cmd.size() << std::endl;
 
 	}
 	return 0;

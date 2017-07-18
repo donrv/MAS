@@ -27,7 +27,7 @@ catkin_package(
 ## Build ##
 ###########
 
-set(CMAKE_CXX_FLAGS "-std=c++11 -fPIC ${CMAKE_CXX_FLAGS}")
+set(CMAKE_CXX_FLAGS "-std=c++11 -g -fPIC ${CMAKE_CXX_FLAGS}")
 
 include_directories(${catkin_INCLUDE_DIRS}
 		include
@@ -37,7 +37,6 @@ set(PLANNERH_SRC
 		src/BehaviorStateMachine.cpp
 		src/MappingHelpers.cpp
 		src/RSPlanner.cpp
-		src/GridMap.cpp
 		src/MatrixOperations.cpp
 		src/TrajectoryCosts.cpp
 		src/HMIStateMachine.cpp
@@ -45,6 +44,10 @@ set(PLANNERH_SRC
 		src/geo_pos_conv.cpp
 		src/LocalPlannerH.cpp
 		src/PlanningHelpers.cpp
+		src/BehaviorPrediction.cpp
+		src/GridWorld.cpp
+		src/HybridPlanner.cpp
+		src/cell.cpp
 )
 
 ## Declare a cpp library

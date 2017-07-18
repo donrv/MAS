@@ -186,6 +186,8 @@ public:
 			const std::vector<std::vector<std::vector<PlannerHNS::WayPoint> > >& paths, const PlannerHNS::LocalPlannerH& localPlanner,
 				visualization_msgs::MarkerArray& markerArray);
 
+	static void ConvertPredictedTrajectoriesFromPlannerHToAutowareVisualizePathFormat(const std::vector<std::vector<PlannerHNS::WayPoint>  >& paths, visualization_msgs::MarkerArray& markerArray);
+
 	static void ConvertFromPlannerHToAutowareVisualizePathFormat(const std::vector<std::vector<PlannerHNS::WayPoint> >& globalPaths,
 			  visualization_msgs::MarkerArray& markerArray);
 
@@ -198,8 +200,30 @@ public:
 			const lidar_tracker::CloudClusterArray& clusters,
 			std::vector<PlannerHNS::DetectedObject>& impObstacles, int& nOriginalPoints, int& nContourPoints);
 
-	static void ConvertFromPlannerObstaclesToAutoware(const PlannerHNS::WayPoint& currState, const std::vector<PlannerHNS::DetectedObject>& trackedObstacles,
-			visualization_msgs::MarkerArray& detectedPolygons);
+	static void ConvertPredictedTrqajectoryMarkers(std::vector<std::vector<PlannerHNS::WayPoint> >& paths,visualization_msgs::MarkerArray& path_markers, visualization_msgs::MarkerArray& path_markers_d);
+
+	static void ConvertParticles(std::vector<PlannerHNS::WayPoint>& points, visualization_msgs::MarkerArray& part_mkrs);
+
+	static void InitPredMarkers(const int& nMarkers, visualization_msgs::MarkerArray& paths);
+
+	static void InitMarkers(const int& nMarkers,
+			visualization_msgs::MarkerArray& centers,
+			visualization_msgs::MarkerArray& dirs,
+			visualization_msgs::MarkerArray& text_info,
+			visualization_msgs::MarkerArray& polygons);
+
+	static void ConvertTrackedObjectsMarkers(const PlannerHNS::WayPoint& currState, const std::vector<PlannerHNS::DetectedObject>& trackedObstacles,
+			visualization_msgs::MarkerArray& centers_d,
+			visualization_msgs::MarkerArray& dirs_d,
+			visualization_msgs::MarkerArray& text_info_d,
+			visualization_msgs::MarkerArray& polygons_d,
+			visualization_msgs::MarkerArray& centers,
+			visualization_msgs::MarkerArray& dirs,
+			visualization_msgs::MarkerArray& text_info,
+			visualization_msgs::MarkerArray& polygons);
+
+	static visualization_msgs::Marker CreateGenMarker(const double& x, const double& y, const double& z,const double& a,
+			const double& r, const double& g, const double& b, const double& scale, const int& id, const std::string& ns, const int& type);
 
 	static PlannerHNS::SHIFT_POS ConvertShiftFromAutowareToPlannerH(const PlannerXNS::AUTOWARE_SHIFT_POS& shift);
 	static PlannerXNS::AUTOWARE_SHIFT_POS ConvertShiftFromPlannerHToAutoware(const PlannerHNS::SHIFT_POS& shift);

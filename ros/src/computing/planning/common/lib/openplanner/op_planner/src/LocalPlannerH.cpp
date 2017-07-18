@@ -236,7 +236,7 @@ void LocalPlannerH::InitPolygons()
  }
 
  void LocalPlannerH::CalculateImportantParameterForDecisionMaking(const PlannerHNS::VehicleState& car_state,
-		 const int& goalID, const bool& bEmergencyStop, const bool& bGreenTrafficLight,
+		 const int& goalID, const bool& bEmergencyStop, const vector<TrafficLight>& detectedLights,
 		 const TrajectoryCost& bestTrajectory)
  {
  	PreCalculatedConditions* pValues = m_pCurrentBehaviorState->GetCalcParams();
@@ -244,7 +244,7 @@ void LocalPlannerH::InitPolygons()
  	double critical_long_front_distance =  m_CarInfo.wheel_base/2.0 + m_CarInfo.length/2.0 + m_params.verticalSafetyDistance;
 	//double critical_long_back_distance =  m_CarInfo.length/2.0 + m_params.verticalSafetyDistance - m_CarInfo.wheel_base/2.0;
 
- 	pValues->minStoppingDistance = -pow(car_state.speed, 2)/m_CarInfo.max_deceleration;
+ 	pValues->minStoppingDistance = -pow(car_state.speed, 2)/m_CarInfo.max_deceleration - 1;
 
  	pValues->iCentralTrajectory		= m_pCurrentBehaviorState->m_pParams->rollOutNumber/2;
 
@@ -301,6 +301,7 @@ void LocalPlannerH::InitPolygons()
  	int stopSignID = -1;
  	int trafficLightID = -1;
  	double distanceToClosestStopLine = 0;
+ 	bool bGreenTrafficLight = true;
 
  	if(m_TotalPath.size()>0)
  		distanceToClosestStopLine = PlanningHelpers::GetDistanceToClosestStopLineAndCheck(m_TotalPath.at(pValues->iCurrSafeLane), state, stopLineID, stopSignID, trafficLightID) - critical_long_front_distance;
@@ -308,13 +309,21 @@ void LocalPlannerH::InitPolygons()
  	if(distanceToClosestStopLine > 0 && distanceToClosestStopLine < pValues->minStoppingDistance)
  	{
  		if(m_pCurrentBehaviorState->m_pParams->enableTrafficLightBehavior)
+ 		{
  			pValues->currentTrafficLightID = trafficLightID;
+ 			//cout << "Detected Traffic Light: " << trafficLightID << endl;
+ 			for(unsigned int i=0; i< detectedLights.size(); i++)
+ 			{
+ 				if(detectedLights.at(i).id == trafficLightID)
+ 					bGreenTrafficLight = (detectedLights.at(i).lightState == GREEN_LIGHT);
+ 			}
+ 		}
 
  		if(m_pCurrentBehaviorState->m_pParams->enableStopSignBehavior)
  			pValues->currentStopSignID = stopSignID;
 
 		pValues->stoppingDistances.push_back(distanceToClosestStopLine);
-		//std::cout << "From Local Planner => D: " << pValues->distanceToStop() << ", Prev SignID: " << pValues->prevStopSignID << ", Curr SignID: " << pValues->currentStopSignID << endl;
+		//std::cout << "LP => D: " << pValues->distanceToStop() << ", PrevSignID: " << pValues->prevTrafficLightID << ", CurrSignID: " << pValues->currentTrafficLightID << ", Green: " << bGreenTrafficLight << endl;
  	}
 
 
@@ -698,6 +707,9 @@ bool LocalPlannerH::CalculateObstacleCosts(PlannerHNS::RoadNetwork& map, const P
 	else
 		currentBehavior.indicator = PlannerHNS::INDICATOR_NONE;
 	currentBehavior.maxVelocity 	= PlannerHNS::PlanningHelpers::GetVelocityAhead(m_Path, state, vehicleState.speed*3.6);
+	if(currentBehavior.maxVelocity == 0)
+		currentBehavior.maxVelocity = vehicleState.speed;
+
 	currentBehavior.minVelocity		= 0;
 	currentBehavior.stopDistance 	= preCalcPrams->distanceToStop();
 	currentBehavior.followVelocity 	= preCalcPrams->velocityOfNext;
@@ -715,7 +727,7 @@ bool LocalPlannerH::CalculateObstacleCosts(PlannerHNS::RoadNetwork& map, const P
 	for(unsigned int i = 0; i < m_Path.size(); i++)
 		m_Path.at(i).v = m_CarInfo.min_speed_forward;
 
-	if(beh.state == TRAFFIC_LIGHT_STOP_STATE || beh.state == STOP_SIGN_STOP_STATE)
+	if(beh.state == TRAFFIC_LIGHT_STOP_STATE || beh.state == STOP_SIGN_STOP_STATE || beh.state == STOP_SIGN_WAIT_STATE || beh.state == TRAFFIC_LIGHT_WAIT_STATE)
 	{
 		PlanningHelpers::GetFollowPointOnTrajectory(m_Path, info, beh.stopDistance - critical_long_front_distance, point_index);
 
@@ -852,7 +864,7 @@ bool LocalPlannerH::CalculateObstacleCosts(PlannerHNS::RoadNetwork& map, const P
 		const std::vector<PlannerHNS::DetectedObject>& obj_list,
 		const int& goalID, PlannerHNS::RoadNetwork& map	,
 		const bool& bEmergencyStop,
-		const bool& bGreenTrafficLight,
+		const std::vector<TrafficLight>& trafficLight,
 		const bool& bLive)
 {
 
@@ -871,7 +883,7 @@ bool LocalPlannerH::CalculateObstacleCosts(PlannerHNS::RoadNetwork& map, const P
 
 	timespec behTimer;
 	UtilityH::GetTickCount(behTimer);
-	CalculateImportantParameterForDecisionMaking(vehicleState, goalID, bEmergencyStop, bGreenTrafficLight, tc);
+	CalculateImportantParameterForDecisionMaking(vehicleState, goalID, bEmergencyStop, trafficLight, tc);
 
 	PlannerHNS::BehaviorState beh = GenerateBehaviorState(vehicleState);
 	m_BehaviorGenTime = UtilityH::GetTimeDiffNow(behTimer);

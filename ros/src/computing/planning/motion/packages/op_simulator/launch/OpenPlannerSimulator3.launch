@@ -12,7 +12,7 @@
 	<arg name="steeringDelay" 				default="1.2" />
 	<arg name="minPursuiteDistance" 		default="3.0" />		
 	
-	<arg name="maxVelocity" 				default="3.0"  />
+	<arg name="maxVelocity" 				default="0.0"  />
 	<arg name="minVelocity" 				default="0.2"  />
 	<arg name="maxAcceleration"				default="5.6"   />
 	<arg name="maxDeceleration"				default="-5.0"   />
@@ -31,12 +31,12 @@
 	<arg name="baseColorB"					default="0.5" />
 	
 	<arg name="mapSource" 					default="1" /> <!-- Autoware=0, Vector Map Folder=1, kml file=2 -->
-	<arg name="mapFileName" 				default="/home/user/data/ToyotaCity2/map/vector_map/" /> <!-- incase of kml map source -->
-	<arg name="logFolder" 					default="/home/user/SimuLogs/SimulatedCar3/" />
+	<arg name="mapFileName" 				default="/media/hatem/8ac0c5d5-8793-4b98-8728-55f8d67ec0f4/data/ToyotaCity2/map/vector_map/" /> <!-- incase of kml map source -->
+	<arg name="logFolder" 					default="/home/hatem/SimuLogs/SimulatedCar3/" />
 	
 	<node pkg="op_simulator" type="op_simulator" name="op_simulator3" output="screen">
 		
-		<param name="id" 					value="$(arg id)" />
+		<param name="id" 							value="$(arg id)" />
 		
 		<param name="width" 						value="$(arg width)" />
 		<param name="length" 						value="$(arg length)" />

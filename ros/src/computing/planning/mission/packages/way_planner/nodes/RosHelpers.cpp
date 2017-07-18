@@ -132,6 +132,21 @@ void RosHelpers::ConvertFromRoadNetworkToAutowareVisualizeMapFormat(const Planne
 	  lane_waypoint_marker.color = total_color;
 	  //lane_waypoint_marker.frame_locked = false;
 
+	  visualization_msgs::Marker text_marker;
+	  text_marker.header.frame_id = "map";
+	  text_marker.header.stamp = ros::Time();
+	  text_marker.ns = "MapItemsIds";
+	  text_marker.type = visualization_msgs::Marker::TEXT_VIEW_FACING;
+	  text_marker.action = visualization_msgs::Marker::ADD;
+	  text_marker.scale.x = 1;
+	  text_marker.scale.y = 1;
+	  text_marker.scale.z = 1;
+	  text_marker.color.a = 0.9;
+	  text_marker.color.r = 1;
+	  text_marker.color.g = 1;
+	  text_marker.color.b = 1;
+	  //text_marker.frame_locked = false;
+
 	  int count = 0;
 	  for (unsigned int i=0; i<  map_lane_array.lanes.size(); i++)
 	  {
@@ -145,6 +160,18 @@ void RosHelpers::ConvertFromRoadNetworkToAutowareVisualizeMapFormat(const Planne
 	      lane_waypoint_marker.points.push_back(point);
 	    }
 	    markerArray.markers.push_back(lane_waypoint_marker);
+
+		  if(lane_waypoint_marker.points.size() > 0)
+		  {
+			  text_marker.id = count * 10;
+				text_marker.pose.position = lane_waypoint_marker.points.at(lane_waypoint_marker.points.size()/2);
+				std::ostringstream str_out;
+				str_out << " Lane: " ;
+				str_out << map_lane_array.lanes.at(i).waypoints.at(0).twist.twist.linear.y;
+				text_marker.text = str_out.str();
+				markerArray.markers.push_back(text_marker);
+		  }
+
 	    count++;
 	  }
 
@@ -192,9 +219,32 @@ void RosHelpers::ConvertFromRoadNetworkToAutowareVisualizeMapFormat(const Planne
 				markerArray.markers.push_back(stop_waypoint_marker);
 				count++;
 			  }
+
+			  if(stop_waypoint_marker.points.size() > 0)
+			  {
+				  text_marker.id = count * 10;
+					text_marker.pose.position = stop_waypoint_marker.points.at(0);
+					std::ostringstream str_out;
+					str_out << "StopLine: " ;
+					str_out << map.stopLines.at(i).id;
+					text_marker.text = str_out.str();
+					markerArray.markers.push_back(text_marker);
+			  }
 		  }
 
-
+		  for (unsigned int i=0; i<  map.trafficLights.size(); i++)
+		  {
+			  text_marker.id = count * 10;
+				text_marker.pose.position.x = map.trafficLights.at(i).pos.x;
+				text_marker.pose.position.y = map.trafficLights.at(i).pos.y;
+				text_marker.pose.position.z = map.trafficLights.at(i).pos.z;
+				std::ostringstream str_out;
+				str_out << "Light: ";
+				str_out << map.trafficLights.at(i).id;
+				text_marker.text = str_out.str();
+				markerArray.markers.push_back(text_marker);
+				count++;
+		  }
 
 	  //RosHelpers::createGlobalLaneArrayOrientationMarker(map_lane_array, markerArray);
 }

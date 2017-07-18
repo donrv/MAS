@@ -29,7 +29,7 @@ enum DRIVABLE_TYPE {DIRT, TARMAC, PARKINGAREA, INDOOR, GENERAL_AREA};
 enum GLOBAL_STATE_TYPE {G_WAITING_STATE, G_PLANING_STATE, G_FORWARD_STATE, G_BRANCHING_STATE, G_FINISH_STATE};
 
 enum STATE_TYPE {INITIAL_STATE, WAITING_STATE, FORWARD_STATE, STOPPING_STATE, EMERGENCY_STATE,
-	TRAFFIC_LIGHT_STOP_STATE,TRAFFIC_LIGHT_WAIT_STATE, STOP_SIGN_STOP_STATE, STOP_SIGN_WAIT_STATE, FOLLOW_STATE, LANE_CHANGE_STATE, OBSTACLE_AVOIDANCE_STATE, GOAL_STATE, FINISH_STATE};
+	TRAFFIC_LIGHT_STOP_STATE,TRAFFIC_LIGHT_WAIT_STATE, STOP_SIGN_STOP_STATE, STOP_SIGN_WAIT_STATE, FOLLOW_STATE, LANE_CHANGE_STATE, OBSTACLE_AVOIDANCE_STATE, GOAL_STATE, FINISH_STATE, YIELDING_STATE, BRANCH_LEFT_STATE, BRANCH_RIGHT_STATE};
 
 enum LIGHT_INDICATOR {INDICATOR_LEFT, INDICATOR_RIGHT, INDICATOR_BOTH , INDICATOR_NONE};
 
@@ -37,7 +37,7 @@ enum SHIFT_POS {SHIFT_POS_PP = 0x60, SHIFT_POS_RR = 0x40, SHIFT_POS_NN = 0x20,
 	SHIFT_POS_DD = 0x10, SHIFT_POS_BB = 0xA0, SHIFT_POS_SS = 0x0f, SHIFT_POS_UU = 0xff };
 
 enum ACTION_TYPE {FORWARD_ACTION, BACKWARD_ACTION, STOP_ACTION, LEFT_TURN_ACTION,
-	RIGHT_TURN_ACTION, U_TURN_ACTION, SWERVE_ACTION, OVERTACK_ACTION};
+	RIGHT_TURN_ACTION, U_TURN_ACTION, SWERVE_ACTION, OVERTACK_ACTION, START_ACTION};
 
 
 class Lane;
@@ -55,56 +55,23 @@ public:
 	}
 };
 
-class POINT2D
-{
-public:
-    double x;
-    double y;
-    double z;
-    POINT2D()
-    {
-      x=0;y=0;z=0;
-    }
-    POINT2D(double px, double py, double pz = 0)
-    {
-      x = px;
-      y = py;
-      z = pz;
-    }
-};
-
-
-
-class RECTANGLE
-
-{
-public:
-  POINT2D bottom_left;
-  POINT2D top_right;
-  double width;
-  double length;
-  bool bObstacle;
-
-
-  inline bool PointInRect(POINT2D p)
-  {
-    return p.x >= bottom_left.x && p.x <= top_right.x && p.y >= bottom_left.y && p.y <= top_right.y;
-  }
-
-  inline bool HitTest(POINT2D p)
-  {
-    return PointInRect(p) && bObstacle;
-  }
-
-  RECTANGLE()
-  {
-	  width=0;
-	  length = 0;
-    bObstacle = true;
-  }
-
-  virtual ~RECTANGLE(){}
-};
+//class POINT2D
+//{
+//public:
+//    double x;
+//    double y;
+//    double z;
+//    POINT2D()
+//    {
+//      x=0;y=0;z=0;
+//    }
+//    POINT2D(double px, double py, double pz = 0)
+//    {
+//      x = px;
+//      y = py;
+//      z = pz;
+//    }
+//};
 
 class GPSPoint
 {
@@ -143,6 +110,37 @@ public:
 		str << "Lon:" << lon << ", Lat:" << lat << ", Alt:" << alt << ", Dir:" << dir << std::endl;
 		return str.str();
 	}
+};
+
+class RECTANGLE
+
+{
+public:
+  GPSPoint bottom_left;
+  GPSPoint top_right;
+  double width;
+  double length;
+  bool bObstacle;
+
+
+  inline bool PointInRect(GPSPoint p)
+  {
+    return p.x >= bottom_left.x && p.x <= top_right.x && p.y >= bottom_left.y && p.y <= top_right.y;
+  }
+
+  inline bool HitTest(GPSPoint p)
+  {
+    return PointInRect(p) && bObstacle;
+  }
+
+  RECTANGLE()
+  {
+	  width=0;
+	  length = 0;
+    bObstacle = true;
+  }
+
+  virtual ~RECTANGLE(){}
 };
 
 class PolygonShape
@@ -193,17 +191,17 @@ class MapItem
 {
 public:
   int id;
-  POINT2D sp; //start point
-  POINT2D ep; // end point
+  GPSPoint sp; //start point
+  GPSPoint ep; // end point
   GPSPoint center;
   double c; //curvature
   double w; //width
   double l; //length
   std::string fileName; //
-  std::vector<POINT2D> polygon;
+  std::vector<GPSPoint> polygon;
 
 
-  MapItem(int ID, POINT2D start, POINT2D end, double curvature, double width, double length, std::string objName)
+  MapItem(int ID, GPSPoint start, GPSPoint end, double curvature, double width, double length, std::string objName)
   {
     id = ID;
     sp = start;
@@ -255,7 +253,7 @@ class Obstacle : public MapItem
   public:
     OBSTACLE_TYPE t;
 
-    Obstacle(int ID, POINT2D start, POINT2D end, double curvature, double width, double length,OBSTACLE_TYPE type, std::string fileName ) : MapItem(ID, start, end, curvature, width, length, fileName)
+    Obstacle(int ID, GPSPoint start, GPSPoint end, double curvature, double width, double length,OBSTACLE_TYPE type, std::string fileName ) : MapItem(ID, start, end, curvature, width, length, fileName)
   {
       t = type;
   }
@@ -297,7 +295,7 @@ class DrivableArea : public MapItem
 public:
   DRIVABLE_TYPE t; // drivable area type
 
-  DrivableArea(int ID, POINT2D start, POINT2D end, double curvature, double width, double length,DRIVABLE_TYPE type, std::string fileName ) : MapItem( ID, start, end, curvature, width, length, fileName)
+  DrivableArea(int ID, GPSPoint start, GPSPoint end, double curvature, double width, double length,DRIVABLE_TYPE type, std::string fileName ) : MapItem( ID, start, end, curvature, width, length, fileName)
   {
     t = type;
   }
@@ -373,6 +371,7 @@ public:
 	int 		RightLaneId;
 	int 		stopLineID;
 	DIRECTION_TYPE bDir;
+	STATE_TYPE	behavior;
 
 	Lane* pLane;
 	WayPoint* pLeft;
@@ -714,19 +713,29 @@ public:
 	OBSTACLE_TYPE t;
 	WayPoint center;
 	WayPoint predicted_center;
+	STATE_TYPE predicted_behavior;
 	std::vector<GPSPoint> contour;
+	WayPoint* pClosestWaypoint;
 	double w;
 	double l;
 	double h;
 	double distance_to_center;
+	bool bDirection;
+	bool bVelocity;
+	int acceleration;
 	DetectedObject()
 	{
+		bDirection = false;
+		bVelocity = false;
+		acceleration = 0;
+		pClosestWaypoint = 0;
 		id = 0;
 		w = 0;
 		l = 0;
 		h = 0;
 		t = GENERAL_OBSTACLE;
 		distance_to_center = 0;
+		predicted_behavior = INITIAL_STATE;
 	}
 
 };

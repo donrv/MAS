@@ -124,6 +124,7 @@ OpenPlannerSimulator::OpenPlannerSimulator()
 	pub_LocalTrajectoriesRviz   = nh.advertise<visualization_msgs::MarkerArray>(str_s6.str(), 1);
 	pub_BehaviorStateRviz		= nh.advertise<visualization_msgs::Marker>(str_s2.str(), 1);
 
+
 	// define subscribers.
 	if(m_SimParams.bRandomStart)
 	{
@@ -158,7 +159,8 @@ OpenPlannerSimulator::OpenPlannerSimulator()
 		//InitializeSimuCar(m_SimParams.startPose);
 	}
 
-	sub_cloudClusters 		= nh.subscribe("/cloud_clusters", 	1, &OpenPlannerSimulator::callbackGetCloudClusters, 		this);
+	sub_cloudClusters 			= nh.subscribe("/cloud_clusters", 	1, &OpenPlannerSimulator::callbackGetCloudClusters, 		this);
+	sub_TrafficLightSignals		= nh.subscribe("/roi_signal", 		10,	&OpenPlannerSimulator::callbackGetTrafficLightSignals, 	this);
 
 	UtilityHNS::UtilityH::GetTickCount(m_PlanningTimer);
 	std::cout << "OpenPlannerSimulator initialized successfully " << std::endl;
@@ -192,7 +194,7 @@ void OpenPlannerSimulator::ReadParamFromLaunchFile(PlannerHNS::CAR_BASIC_INFO& m
 	m_PlanningParams.enableLaneChange = false;
 	m_PlanningParams.enableStopSignBehavior = false;
 	m_PlanningParams.enableSwerving = false;
-	m_PlanningParams.enableTrafficLightBehavior = false;
+	m_PlanningParams.enableTrafficLightBehavior = true;
 	m_PlanningParams.horizonDistance = 100;
 	m_PlanningParams.horizontalSafetyDistancel = 0.1;
 	m_PlanningParams.verticalSafetyDistance = 0.8;
@@ -327,7 +329,6 @@ void OpenPlannerSimulator::displayFollowingInfo(const std::vector<PlannerHNS::GP
   m1.header.frame_id = "map";
   m1.header.stamp = ros::Time();
   m1.ns = "curr_simu_pose";
-  //m1.type = visualization_msgs::Marker::ARROW;
   m1.type = visualization_msgs::Marker::MESH_RESOURCE;
   m1.mesh_resource = m_SimParams.meshPath;
   m1.mesh_use_embedded_materials = true;
@@ -344,7 +345,7 @@ void OpenPlannerSimulator::displayFollowingInfo(const std::vector<PlannerHNS::GP
   m1.scale.x = 1.0*m_CarInfo.length/4.2;
   m1.scale.y = 1.0*m_CarInfo.width/1.85;
   m1.scale.z = 1.0;
-  m1.frame_locked = true;
+
   pub_CurrPoseRviz.publish(m1);
 
   visualization_msgs::Marker lane_waypoint_marker;
@@ -474,6 +475,24 @@ void OpenPlannerSimulator::ConvertFromAutowareCloudClusterObstaclesToPlannerH(co
 	nContourPoints =  nPoints;
 }
 
+void OpenPlannerSimulator::callbackGetTrafficLightSignals(const road_wizard::Signals& msg)
+{
+//	std::cout << "Received Traffic Light Signals : " << msg.Signals.size() << std::endl;
+	m_CurrTrafficLight.clear();
+	bNewLightSignal = true;
+	for(unsigned int i = 0 ; i < msg.Signals.size() ; i++)
+	{
+		PlannerHNS::TrafficLight tl;
+		tl.id = msg.Signals.at(i).signalId;
+		if(msg.Signals.at(i).type == 1)
+			tl.lightState = PlannerHNS::GREEN_LIGHT;
+		else
+			tl.lightState = PlannerHNS::RED_LIGHT;
+
+		m_CurrTrafficLight.push_back(tl);
+	}
+}
+
 void OpenPlannerSimulator::visualizeBehaviors()
 {
 	visualization_msgs::Marker behaviorMarker;
@@ -489,9 +508,18 @@ void OpenPlannerSimulator::visualizeBehaviors()
 	behaviorMarker.color.a = 1.0;
 	behaviorMarker.frame_locked = false;
 
-	behaviorMarker.color.r = 1.0;//trackedObstacles.at(i).center.v/16.0;
-	behaviorMarker.color.g = 1.0;// - trackedObstacles.at(i).center.v/16.0;
-	behaviorMarker.color.b = 1.0;
+	if(m_LocalPlanner.m_pCurrentBehaviorState->GetCalcParams()->bTrafficIsRed)
+	{
+		behaviorMarker.color.r = 1.0;//trackedObstacles.at(i).center.v/16.0;
+		behaviorMarker.color.g = 0.0;// - trackedObstacles.at(i).center.v/16.0;
+		behaviorMarker.color.b = 0.0;
+	}
+	else
+	{
+		behaviorMarker.color.r = 0.0;//trackedObstacles.at(i).center.v/16.0;
+		behaviorMarker.color.g = 1.0;// - trackedObstacles.at(i).center.v/16.0;
+		behaviorMarker.color.b = 0.0;
+	}
 
 	geometry_msgs::Point point;
 
@@ -608,7 +636,7 @@ int OpenPlannerSimulator::LoadSimulationData(PlannerHNS::WayPoint& start_p, Plan
 void OpenPlannerSimulator::PlannerMainLoop()
 {
 
-	ros::Rate loop_rate(100);
+	ros::Rate loop_rate(25);
 	//PlannerHNS::WayPoint defaultStart(3704.15014648,-99459.0743942, 88, 3.12940141294);
 	PlannerHNS::BehaviorState currBehavior;
 	PlannerHNS::VehicleState  currStatus;
@@ -677,8 +705,13 @@ void OpenPlannerSimulator::PlannerMainLoop()
 				m_LocalPlanner.m_pCurrentBehaviorState->GetCalcParams()->bNewGlobalPath = true;
 			}
 
+			if(bNewLightSignal)
+			{
+				m_PrevTrafficLight = m_CurrTrafficLight;
+				bNewLightSignal = false;
+			}
 			//Local Planning
-			currBehavior = m_LocalPlanner.DoOneStep(dt, currStatus, m_TrackedClusters, 1, m_Map, 0, 1, true);
+			currBehavior = m_LocalPlanner.DoOneStep(dt, currStatus, m_TrackedClusters, 1, m_Map, 0, m_PrevTrafficLight, true);
 
 			 //Odometry Simulation and Update
 			m_LocalPlanner.SetSimulatedTargetOdometryReadings(desiredStatus.speed, desiredStatus.steer, desiredStatus.shift);
