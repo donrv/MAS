@@ -13,6 +13,7 @@
 #include "RoadNetwork.h"
 #include "TrajectoryCosts.h"
 
+#define AVOIDANCE_SPEED_FACTOR 0.75
 namespace PlannerHNS
 {
 
@@ -24,6 +25,7 @@ public:
 	ControllerParams m_ControlParams;
 	std::vector<GPSPoint> m_CarShapePolygon;
 	std::vector<WayPoint> m_Path;
+	std::vector<WayPoint> m_OriginalLocalPath;
 	std::vector<std::vector<WayPoint> > m_TotalPath;
 	int m_iCurrentTotalPathId;
 	int m_iSafeTrajectory;
@@ -145,7 +147,7 @@ private:
 	BehaviorState GenerateBehaviorState(const VehicleState& vehicleState);
 	void TransformPoint(const WayPoint& refPose, GPSPoint& p);
 	void AddAndTransformContourPoints(const DetectedObject& obj, std::vector<WayPoint>& contourPoints);
-	void UpdateVelocityDirectlyToTrajectory(const BehaviorState& beh, const VehicleState& CurrStatus, const double& dt);
+	double UpdateVelocityDirectlyToTrajectory(const BehaviorState& beh, const VehicleState& CurrStatus, const double& dt);
 
 	bool NoWayTest(const double& min_distance, const int& iGlobalPathIndex);
 

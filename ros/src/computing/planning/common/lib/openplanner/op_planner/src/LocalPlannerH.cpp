@@ -244,7 +244,7 @@ void LocalPlannerH::InitPolygons()
  	double critical_long_front_distance =  m_CarInfo.wheel_base/2.0 + m_CarInfo.length/2.0 + m_params.verticalSafetyDistance;
 	//double critical_long_back_distance =  m_CarInfo.length/2.0 + m_params.verticalSafetyDistance - m_CarInfo.wheel_base/2.0;
 
- 	pValues->minStoppingDistance = -pow(car_state.speed, 2)/m_CarInfo.max_deceleration - 1;
+ 	pValues->minStoppingDistance = -pow(car_state.speed, 2)/(m_CarInfo.max_deceleration) - 1;
 
  	pValues->iCentralTrajectory		= m_pCurrentBehaviorState->m_pParams->rollOutNumber/2;
 
@@ -625,6 +625,12 @@ bool LocalPlannerH::CalculateObstacleCosts(PlannerHNS::RoadNetwork& map, const P
 
 	if(m_TotalPath.size()>0)
 	{
+		if(m_pCurrentBehaviorState->GetCalcParams()->bNewGlobalPath)
+		{
+			m_TotalPath.at(m_iCurrentTotalPathId).at(m_TotalPath.at(m_iCurrentTotalPathId).size()-1).v = 0;
+			PlanningHelpers::GenerateRecommendedSpeed(m_TotalPath.at(m_iCurrentTotalPathId), m_CarInfo.max_speed_forward, m_pCurrentBehaviorState->m_pParams->speedProfileFactor);
+		}
+
 		int currIndex = PlannerHNS::PlanningHelpers::GetClosestNextPointIndex(m_Path, state);
 		int index_limit = 0;//m_Path.size() - 20;
 		if(index_limit<=0)
@@ -659,8 +665,6 @@ bool LocalPlannerH::CalculateObstacleCosts(PlannerHNS::RoadNetwork& map, const P
 			m_pCurrentBehaviorState->GetCalcParams()->bRePlan = false;
 			m_pCurrentBehaviorState->GetCalcParams()->bNewGlobalPath = false;
 
-			//cout << "Generating New Trajectories ! iPrev: " << preCalcPrams->iPrevSafeTrajectory << " , iSafe: " << preCalcPrams->iCurrSafeTrajectory << endl;
-
 			if(m_pCurrentBehaviorState->m_Behavior == OBSTACLE_AVOIDANCE_STATE)
 				preCalcPrams->iPrevSafeTrajectory = preCalcPrams->iCurrSafeTrajectory;
 			else
@@ -669,16 +673,12 @@ bool LocalPlannerH::CalculateObstacleCosts(PlannerHNS::RoadNetwork& map, const P
 			preCalcPrams->iPrevSafeLane = preCalcPrams->iCurrSafeLane;
 
 			if(preCalcPrams->iPrevSafeLane >= 0
-					&& preCalcPrams->iPrevSafeLane < m_RollOuts.size()
+					&& preCalcPrams->iPrevSafeLane < (int)m_RollOuts.size()
 					&& preCalcPrams->iPrevSafeTrajectory >= 0
-					&& preCalcPrams->iPrevSafeTrajectory < m_RollOuts.at(preCalcPrams->iPrevSafeLane).size())
+					&& preCalcPrams->iPrevSafeTrajectory < (int)m_RollOuts.at(preCalcPrams->iPrevSafeLane).size())
 			{
-				//cout << "Select New Trajectories ! iPrev: " << preCalcPrams->iPrevSafeTrajectory << " , iSafe: " << preCalcPrams->iCurrSafeTrajectory << endl;
-
 				m_Path = m_RollOuts.at(preCalcPrams->iPrevSafeLane).at(preCalcPrams->iPrevSafeTrajectory);
-//				PlanningHelpers::GenerateRecommendedSpeed(m_Path,
-//						m_pCurrentBehaviorState->m_pParams->maxSpeed,
-//						m_pCurrentBehaviorState->m_pParams->speedProfileFactor);
+				m_OriginalLocalPath = m_TotalPath.at(m_iCurrentTotalPathId);
 				bNewTrajectory = true;
 			}
 		}
@@ -695,10 +695,7 @@ bool LocalPlannerH::CalculateObstacleCosts(PlannerHNS::RoadNetwork& map, const P
 	PlannerHNS::BehaviorState currentBehavior;
 
 	currentBehavior.state = m_pCurrentBehaviorState->m_Behavior;
-	//if(currentBehavior.state == PlannerHNS::FOLLOW_STATE)
-		currentBehavior.followDistance = preCalcPrams->distanceToNext;
-	//else
-	//	currentBehavior.followDistance = 0;
+	currentBehavior.followDistance = preCalcPrams->distanceToNext;
 
 	if(preCalcPrams->bUpcomingRight)
 		currentBehavior.indicator = PlannerHNS::INDICATOR_RIGHT;
@@ -706,9 +703,6 @@ bool LocalPlannerH::CalculateObstacleCosts(PlannerHNS::RoadNetwork& map, const P
 		currentBehavior.indicator = PlannerHNS::INDICATOR_LEFT;
 	else
 		currentBehavior.indicator = PlannerHNS::INDICATOR_NONE;
-	currentBehavior.maxVelocity 	= PlannerHNS::PlanningHelpers::GetVelocityAhead(m_Path, state, vehicleState.speed*3.6);
-	if(currentBehavior.maxVelocity == 0)
-		currentBehavior.maxVelocity = vehicleState.speed;
 
 	currentBehavior.minVelocity		= 0;
 	currentBehavior.stopDistance 	= preCalcPrams->distanceToStop();
@@ -717,15 +711,16 @@ bool LocalPlannerH::CalculateObstacleCosts(PlannerHNS::RoadNetwork& map, const P
 	return currentBehavior;
  }
 
- void LocalPlannerH::UpdateVelocityDirectlyToTrajectory(const BehaviorState& beh, const VehicleState& CurrStatus, const double& dt)
+ double LocalPlannerH::UpdateVelocityDirectlyToTrajectory(const BehaviorState& beh, const VehicleState& CurrStatus, const double& dt)
  {
-
-	 RelativeInfo info;
+	RelativeInfo info, total_info;
 	PlanningHelpers::GetRelativeInfo(m_Path, state, info);
+	PlanningHelpers::GetRelativeInfo(m_TotalPath.at(m_iCurrentTotalPathId), state, total_info);
+	double average_braking_distance = -pow(CurrStatus.speed, 2)/(m_CarInfo.max_deceleration);
+	double max_velocity	= PlannerHNS::PlanningHelpers::GetVelocityAhead(m_TotalPath.at(m_iCurrentTotalPathId), total_info, average_braking_distance);
+
 	unsigned int point_index = 0;
 	double critical_long_front_distance = 2.0;
-	for(unsigned int i = 0; i < m_Path.size(); i++)
-		m_Path.at(i).v = m_CarInfo.min_speed_forward;
 
 	if(beh.state == TRAFFIC_LIGHT_STOP_STATE || beh.state == STOP_SIGN_STOP_STATE || beh.state == STOP_SIGN_WAIT_STATE || beh.state == TRAFFIC_LIGHT_WAIT_STATE)
 	{
@@ -733,121 +728,76 @@ bool LocalPlannerH::CalculateObstacleCosts(PlannerHNS::RoadNetwork& map, const P
 
 		double inc = CurrStatus.speed;
 		int iRange = point_index - info.iBack;
-		//cout << "Range : " << iRange;
 		if(iRange > 0)
 			inc = inc / (double)iRange;
 		else
 			inc = 0;
 
-	//	cout << "Target Stopping Velocity: "  <<  endl ;
 		double target_velocity = CurrStatus.speed - inc;
 		for(unsigned int i =  info.iBack; i < point_index; i++)
 		{
-			if(target_velocity > m_CarInfo.max_speed_forward)
-				target_velocity = m_CarInfo.max_speed_forward;
-
-			if(target_velocity < m_CarInfo.min_speed_forward)
-				target_velocity = m_CarInfo.min_speed_forward;
-
 			 if(i < m_Path.size() && i >= 0)
-			 {
-			//	 cout << target_velocity << ", " ;
 				 m_Path.at(i).v = target_velocity;
-			 }
-
 			 target_velocity -= inc;
 		}
-
-		//cout << endl << endl;
 	}
 	else if(beh.state == FOLLOW_STATE)
 	{
+
 		double targe_acceleration = -pow(CurrStatus.speed, 2)/(2.0*(beh.followDistance - critical_long_front_distance));
 		if(targe_acceleration <= 0 &&  targe_acceleration > m_CarInfo.max_deceleration/2.0)
 		{
-			PlanningHelpers::GenerateRecommendedSpeed(m_Path, m_pCurrentBehaviorState->m_pParams->maxSpeed, m_pCurrentBehaviorState->m_pParams->speedProfileFactor);
-
-			double follow_distance = fabs(CurrStatus.speed) * (m_ControlParams.SteeringDelay+1);
-			if(follow_distance < m_ControlParams.minPursuiteDistance)
-				follow_distance = m_ControlParams.minPursuiteDistance;
-
-			RelativeInfo info;
-			PlanningHelpers::GetRelativeInfo(m_Path, state, info);
-			unsigned int point_index = 0;
-			WayPoint pursuite_point = PlanningHelpers::GetFollowPointOnTrajectory(m_Path, info, follow_distance, point_index);
-			double target_velocity = pursuite_point.v;
-			if(target_velocity > m_CarInfo.max_speed_forward)
-				target_velocity = m_CarInfo.max_speed_forward;
-
-
+			double target_velocity = (targe_acceleration * dt) + CurrStatus.speed;
 			for(unsigned int i = 0; i < m_Path.size(); i++)
 			{
 				if(m_pCurrentBehaviorState->GetCalcParams()->iCurrSafeTrajectory == m_pCurrentBehaviorState->GetCalcParams()->iCentralTrajectory)
 					m_Path.at(i).v = target_velocity;
 				else
-					m_Path.at(i).v = target_velocity*0.75;
+					m_Path.at(i).v = target_velocity*AVOIDANCE_SPEED_FACTOR;
 			}
+
+			//cout << "Accelerate -> Target V: " << target_velocity << ", Brake D: " <<  average_braking_distance << ", Acceleration: " << targe_acceleration << endl;
 		}
 		else
 		{
-			PlanningHelpers::GenerateRecommendedSpeed(m_Path, m_pCurrentBehaviorState->m_pParams->maxSpeed, m_pCurrentBehaviorState->m_pParams->speedProfileFactor);
-
 			WayPoint pursuite_point = PlanningHelpers::GetFollowPointOnTrajectory(m_Path, info, beh.followDistance - critical_long_front_distance, point_index);
-
 			double inc = CurrStatus.speed;
 			int iRange = point_index - info.iBack;
-			//cout << "Range : " << iRange;
+
 			if(iRange > 0)
 				inc = inc / (double)iRange;
 			else
 				inc = 0;
 
-			//cout << "Target Follow Velocity: " <<  endl ;
 			double target_velocity = CurrStatus.speed - inc;
 			for(unsigned int i =  info.iBack; i < point_index; i++)
 			{
-				if(target_velocity > m_CarInfo.max_speed_forward)
-					target_velocity = m_CarInfo.max_speed_forward;
-
-				if(target_velocity < m_CarInfo.min_speed_forward)
-					target_velocity = m_CarInfo.min_speed_forward;
-
 				 if(i < m_Path.size() && i >= 0)
 				 {
-				//	 cout << target_velocity << ", " ;
+					 target_velocity = target_velocity < 0 ? 0 : target_velocity;
 					 if(m_pCurrentBehaviorState->GetCalcParams()->iCurrSafeTrajectory == m_pCurrentBehaviorState->GetCalcParams()->iCentralTrajectory)
 						 m_Path.at(i).v = target_velocity;
 					 else
-						 m_Path.at(i).v = target_velocity*0.75;
+						 m_Path.at(i).v = target_velocity*AVOIDANCE_SPEED_FACTOR;
 				 }
 
 				 target_velocity -= inc;
 			}
+
+			//cout << "Decelerate -> Target V: " << target_velocity << ", Brake D: " <<  average_braking_distance << ", Start I" << info.iBack << endl;
 		}
+
 	}
 	else if(beh.state == FORWARD_STATE || beh.state == OBSTACLE_AVOIDANCE_STATE )
 	{
-		PlanningHelpers::GenerateRecommendedSpeed(m_Path, m_pCurrentBehaviorState->m_pParams->maxSpeed, m_pCurrentBehaviorState->m_pParams->speedProfileFactor);
-
-		double follow_distance = fabs(CurrStatus.speed) * (m_ControlParams.SteeringDelay+1);
-		if(follow_distance < m_ControlParams.minPursuiteDistance)
-			follow_distance = m_ControlParams.minPursuiteDistance;
-
-		RelativeInfo info;
-		PlanningHelpers::GetRelativeInfo(m_Path, state, info);
-		unsigned int point_index = 0;
-		WayPoint pursuite_point = PlanningHelpers::GetFollowPointOnTrajectory(m_Path, info, follow_distance, point_index);
-		double target_velocity = pursuite_point.v;
-		if(target_velocity > m_CarInfo.max_speed_forward)
-			target_velocity = m_CarInfo.max_speed_forward;
+		double target_velocity = max_velocity;
 
 		for(unsigned int i = 0; i < m_Path.size(); i++)
 		{
 			if(m_pCurrentBehaviorState->GetCalcParams()->iCurrSafeTrajectory == m_pCurrentBehaviorState->GetCalcParams()->iCentralTrajectory)
 				m_Path.at(i).v = target_velocity;
 			else
-				m_Path.at(i).v = target_velocity*0.75;
-
+				m_Path.at(i).v = target_velocity*AVOIDANCE_SPEED_FACTOR;
 		}
 	}
 	else
@@ -856,6 +806,8 @@ bool LocalPlannerH::CalculateObstacleCosts(PlannerHNS::RoadNetwork& map, const P
 		for(unsigned int i = 0; i < m_Path.size(); i++)
 			m_Path.at(i).v = target_velocity;
 	}
+
+	return max_velocity;
  }
 
  PlannerHNS::BehaviorState LocalPlannerH::DoOneStep(
@@ -893,17 +845,7 @@ bool LocalPlannerH::CalculateObstacleCosts(PlannerHNS::RoadNetwork& map, const P
 	beh.bNewPlan = SelectSafeTrajectoryAndSpeedProfile(vehicleState);
 	m_RollOutsGenerationTime = UtilityH::GetTimeDiffNow(t);
 
-	if(m_pCurrentBehaviorState->m_pParams->enabTrajectoryVelocities)
-	{
-		UpdateVelocityDirectlyToTrajectory(beh, vehicleState, dt);
-	}
-	else if(beh.bNewPlan == true)
-	{
-		if(m_pCurrentBehaviorState->GetCalcParams()->iCurrSafeTrajectory == m_pCurrentBehaviorState->GetCalcParams()->iCentralTrajectory)
-			PlanningHelpers::GenerateRecommendedSpeed(m_Path, m_pCurrentBehaviorState->m_pParams->maxSpeed, m_pCurrentBehaviorState->m_pParams->speedProfileFactor);
-		else
-			PlanningHelpers::GenerateRecommendedSpeed(m_Path, m_pCurrentBehaviorState->m_pParams->maxSpeed*0.25, m_pCurrentBehaviorState->m_pParams->speedProfileFactor);
-	}
+	beh.maxVelocity = UpdateVelocityDirectlyToTrajectory(beh, vehicleState, dt);
 
 /**
  * Usage of predictive planning

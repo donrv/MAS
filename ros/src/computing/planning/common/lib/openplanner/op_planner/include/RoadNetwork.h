@@ -37,7 +37,7 @@ enum SHIFT_POS {SHIFT_POS_PP = 0x60, SHIFT_POS_RR = 0x40, SHIFT_POS_NN = 0x20,
 	SHIFT_POS_DD = 0x10, SHIFT_POS_BB = 0xA0, SHIFT_POS_SS = 0x0f, SHIFT_POS_UU = 0xff };
 
 enum ACTION_TYPE {FORWARD_ACTION, BACKWARD_ACTION, STOP_ACTION, LEFT_TURN_ACTION,
-	RIGHT_TURN_ACTION, U_TURN_ACTION, SWERVE_ACTION, OVERTACK_ACTION, START_ACTION};
+	RIGHT_TURN_ACTION, U_TURN_ACTION, SWERVE_ACTION, OVERTACK_ACTION, START_ACTION, SLOWDOWN_ACTION, CHANGE_DESTINATION, UNKOWN_ACTION};
 
 
 class Lane;
@@ -791,8 +791,8 @@ public:
 		minDistanceToAvoid				= 15;
 		maxDistanceToAvoid				= 5;
 		speedProfileFactor				= 1.0;
-		smoothingDataWeight				= 0.45;
-		smoothingSmoothWeight			= 0.3;
+		smoothingDataWeight				= 0.47;
+		smoothingSmoothWeight			= 0.2;
 		smoothingToleranceError			= 0.05;
 
 		verticalSafetyDistance 			= 0.0;

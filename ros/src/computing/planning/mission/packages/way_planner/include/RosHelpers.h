@@ -103,6 +103,10 @@ public:
 					recieved_msg.options.push_back(PlannerHNS::STOP_ACTION);
 				else if (idirect == 8)
 					recieved_msg.options.push_back(PlannerHNS::START_ACTION);
+				else if (idirect == 9)
+					recieved_msg.options.push_back(PlannerHNS::SLOWDOWN_ACTION);
+				else if (idirect == 10)
+					recieved_msg.options.push_back(PlannerHNS::CHANGE_DESTINATION);
 			}
 			recieved_msg.currID = atoi(sections.at(3).c_str());
 			recieved_msg.bErr = atoi(sections.at(4).c_str());

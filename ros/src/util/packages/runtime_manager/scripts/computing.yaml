@@ -2186,7 +2186,7 @@ params :
     - name : maxVelocity
       desc : maximum allowed velocity in meter/second
       label: Max Velocity
-      min  : 0.0
+      min  : -1.0
       max  : 20.0
       v    : 3.0
       cmd_param:

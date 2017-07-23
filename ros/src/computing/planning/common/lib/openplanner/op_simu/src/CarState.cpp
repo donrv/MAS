@@ -825,7 +825,8 @@ void CarState::FindNextBestSafeTrajectory(int& safe_index)
 		currentBehavior.indicator = PlannerHNS::INDICATOR_LEFT;
 	else
 		currentBehavior.indicator = PlannerHNS::INDICATOR_NONE;
-	currentBehavior.maxVelocity 	= PlannerHNS::PlanningHelpers::GetVelocityAhead(m_Path, state, vehicleState.speed*3.6);
+	//currentBehavior.maxVelocity 	= PlannerHNS::PlanningHelpers::GetVelocityAhead(m_Path, state, vehicleState.speed*3.6);
+	currentBehavior.maxVelocity = 0;
 	currentBehavior.minVelocity		= 0;
 	currentBehavior.stopDistance 	= preCalcPrams->distanceToStop();
 	currentBehavior.followVelocity 	= preCalcPrams->velocityOfNext;
@@ -1028,7 +1029,8 @@ PlannerHNS::BehaviorState SimulatedCarState::GenerateBehaviorState(const Planner
 	//    	else
 	//    		currentBehavior.indicator = PlannerHNS::INDICATOR_NONE;
 
-	currentBehavior.maxVelocity 	= PlannerHNS::PlanningHelpers::GetVelocityAhead(m_Path, state, 1.5*vehicleState.speed*3.6);
+	//currentBehavior.maxVelocity 	= PlannerHNS::PlanningHelpers::GetVelocityAhead(m_Path, state, 1.5*vehicleState.speed*3.6);
+	currentBehavior.maxVelocity  = 0;
 	currentBehavior.minVelocity		= 0;
 	currentBehavior.stopDistance 	= 0;
 	currentBehavior.followVelocity 	= 0;

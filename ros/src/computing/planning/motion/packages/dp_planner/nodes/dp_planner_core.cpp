@@ -1038,7 +1038,7 @@ void PlannerX::LogLocalPlanningInfo(double dt)
 		str_out << UtilityHNS::DataRW::LoggingMainfolderName;
 		str_out << UtilityHNS::DataRW::PathLogFolderName;
 		str_out << "LocalPath_";
-		PlannerHNS::PlanningHelpers::WritePathToFile(str_out.str(), m_LocalPlanner.m_Path);
+		PlannerHNS::PlanningHelpers::WritePathToFile(str_out.str(), m_LocalPlanner.m_OriginalLocalPath);
 	}
 }
 

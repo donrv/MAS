@@ -74,7 +74,7 @@ namespace WayPlannerNS {
 
 #define MAX_GLOBAL_PLAN_DISTANCE 10000
 #define _ENABLE_VISUALIZE_PLAN
-#define REPLANNING_DISTANCE 25
+#define REPLANNING_DISTANCE 20
 class AutowareRoadNetwork
 {
 public:
@@ -141,6 +141,9 @@ public:
 
 class way_planner_core
 {
+
+public:
+	int m_iCurrentGoalIndex;
 protected:
 
 	WayPlannerParams m_params;
@@ -149,7 +152,6 @@ protected:
 	PlannerHNS::WayPoint m_CurrentPose;
 	//bool bStartPos;
 	//bool bUsingCurrentPose;
-	int m_iCurrentGoalIndex;
 	std::vector<PlannerHNS::WayPoint> m_GoalsPos;
 	std::vector<std::string> m_GoalsNames;
 	//bool bGoalPos;
@@ -160,6 +162,8 @@ protected:
 	std::vector<geometry_msgs::PoseStamped> m_NodesList;
 
 	PlannerHNS::ACTION_TYPE m_NextAction;
+	PlannerHNS::ACTION_TYPE m_PrevAction;
+	double m_SlowDownFactor;
 
 	ros::NodeHandle nh;
 
@@ -171,6 +175,7 @@ protected:
 	ros::Publisher pub_StartPointRviz;
 	ros::Publisher pub_GoalPointRviz;
 	ros::Publisher pub_NodesListRviz;
+	ros::Publisher pub_GoalsListRviz;
 
 	ros::Subscriber sub_robot_odom			;
 	ros::Subscriber sub_start_pose;
@@ -218,6 +223,7 @@ private:
   	void UpdateRoadMap(const AutowareRoadNetwork& src_map, PlannerHNS::RoadNetwork& out_map);
   	bool GenerateGlobalPlan(PlannerHNS::WayPoint& startPoint, PlannerHNS::WayPoint& goalPoint, std::vector<std::vector<PlannerHNS::WayPoint> >& generatedTotalPaths);
   	void VisualizeAndSend(const std::vector<std::vector<PlannerHNS::WayPoint> > generatedTotalPaths);
+  	void VisualizeDestinations(std::vector<PlannerHNS::WayPoint>& destinations, const int& iSelected);
   	void SaveSimulationData();
   	int LoadSimulationData();
 

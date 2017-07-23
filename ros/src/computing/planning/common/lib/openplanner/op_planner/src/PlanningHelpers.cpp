@@ -1341,35 +1341,42 @@ void PlanningHelpers::SmoothWayPointsDirections(vector<WayPoint>& path_in, doubl
 	path_in = newpath;
 }
 
+void PlanningHelpers::SmoothGlobalPathSpeed(vector<WayPoint>& path)
+{
+	CalcAngleAndCostAndCurvatureAnd2D(path);
+	SmoothSpeedProfiles(path, 0.45,0.25, 0.01);
+}
+
 void PlanningHelpers::GenerateRecommendedSpeed(vector<WayPoint>& path, const double& max_speed, const double& speedProfileFactor)
 {
-	FixPathDensity(path, 0.5);
-
 	CalcAngleAndCostAndCurvatureAnd2D(path);
-
-	SmoothCurvatureProfiles(path, 0.3, 0.49, 0.01);
+	SmoothCurvatureProfiles(path, 0.4, 0.3, 0.01);
+	double v = 0;
 
 	for(unsigned int i = 0 ; i < path.size(); i++)
 	{
 		double k_ratio = path.at(i).cost*10.0;
+		double local_max = max_speed == -1 ? path.at(i).v : max_speed;
 
 		if(k_ratio >= 9.5)
-			path.at(i).v = max_speed;
+			v = local_max;
 		else if(k_ratio <= 8.5)
-			path.at(i).v = 1.0*speedProfileFactor;
+			v = 1.0*speedProfileFactor;
 		else
 		{
 			k_ratio = k_ratio - 8.5;
-			path.at(i).v = (max_speed - 1.0) * k_ratio + 1.0;
-			path.at(i).v = path.at(i).v*speedProfileFactor;
+			v = (local_max - 1.0) * k_ratio + 1.0;
+			v = v*speedProfileFactor;
 		}
 
-		if(path.at(i).v > max_speed)
-			path.at(i).v = max_speed;
+		if(v > local_max)
+			path.at(i).v = local_max;
+		else
+			path.at(i).v = v;
 
 	}
 
-	//SmoothSpeedProfiles(path, 0.15,0.45, 0.1);
+	SmoothSpeedProfiles(path, 0.4,0.3, 0.01);
 }
 
 WayPoint* PlanningHelpers::BuildPlanningSearchTreeV2(WayPoint* pStart,
@@ -1442,7 +1449,7 @@ WayPoint* PlanningHelpers::BuildPlanningSearchTreeV2(WayPoint* pStart,
 
 				wp->cost = pH->cost + d;
 				wp->pRight = pH;
-				wp->pRight = 0;
+				wp->pLeft = 0;
 
 				nextLeafToTrace.push_back(make_pair(pH, wp));
 				all_cells_to_delete.push_back(wp);
@@ -2011,23 +2018,24 @@ void PlanningHelpers::CalcContourPointsForDetectedObjects(const WayPoint& currPo
 	obj_list = res_list;
 }
 
-double PlanningHelpers::GetVelocityAhead(const std::vector<WayPoint>& path, const WayPoint& pose, const double& distance)
+double PlanningHelpers::GetVelocityAhead(const std::vector<WayPoint>& path, const RelativeInfo& info, const double& reasonable_brake_distance)
 {
-	int iStart = GetClosestNextPointIndex(path, pose);
+	if(path.size()==0) return 0;
 
-	double d = 0;
-	double min_v = 99999;
-	for(unsigned int i=iStart; i< path.size(); i++)
+
+	double min_v = path.at(info.iBack).v;
+	double d = info.to_front_distance;
+
+	int local_i = info.iFront;
+	while(local_i < path.size()-1 && d < reasonable_brake_distance)
 	{
-		d  += distance2points(path.at(i).pos, pose.pos);
-
-		if(path.at(i).v < min_v)
-			min_v = path.at(i).v;
-
-		if(d >= distance)
-			return min_v;
+		local_i++;
+		d += hypot(path.at(local_i).pos.y - path.at(local_i-1).pos.y, path.at(local_i).pos.x - path.at(local_i-1).pos.x);
+		if(path.at(local_i).v < min_v)
+			min_v = path.at(local_i).v;
 	}
-	return 0;
+
+	return min_v;
 }
 
 void PlanningHelpers::WritePathToFile(const string& fileName, const vector<WayPoint>& path)

@@ -107,6 +107,8 @@ public:
 	static void SmoothCurvatureProfiles(std::vector<WayPoint>& path_in, double weight_data, double weight_smooth, double tolerance = 0.1);
 	static void SmoothWayPointsDirections(std::vector<WayPoint>& path_in, double weight_data, double weight_smooth, double tolerance	= 0.1);
 
+	static void SmoothGlobalPathSpeed(std::vector<WayPoint>& path);
+
 	static void GenerateRecommendedSpeed(std::vector<WayPoint>& path, const double& max_speed, const double& speedProfileFactor);
 //	static WayPoint* BuildPlanningSearchTree(Lane* l, const WayPoint& prevWayPointIndex,
 //			const WayPoint& startPos, const WayPoint& goalPos,
@@ -152,7 +154,7 @@ public:
 
 	static void CalcContourPointsForDetectedObjects(const WayPoint& currPose, std::vector<DetectedObject>& obj_list, const double& filterDistance = 100);
 
-	static double GetVelocityAhead(const std::vector<WayPoint>& path, const WayPoint& pose, const double& distance);
+	static double GetVelocityAhead(const std::vector<WayPoint>& path, const RelativeInfo& info, const double& reasonable_brake_distance);
 	static bool CompareTrajectories(const std::vector<WayPoint>& path1, const std::vector<WayPoint>& path2);
 
 	static double GetDistanceToClosestStopLineAndCheck(const std::vector<WayPoint>& path, const WayPoint& p, int& stopLineID,int& stopSignID, int& trafficLightID, const int& prevIndex = 0);
