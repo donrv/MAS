@@ -66,7 +66,6 @@
 #include <opencv2/contrib/contrib.hpp>
 #endif
 
-#include <chrono>
 #include <iostream>
 #include <vector>
 #include <string>
@@ -76,6 +75,10 @@
 
 //#include <vector_map/vector_map.h>
 //#include <vector_map_server/GetSignal.h>
+
+#ifdef GPU_CLUSTERING
+	#include "gpu_euclidean_clustering.h"
+#endif
 
 using namespace cv;
 
@@ -130,6 +133,9 @@ static double _keep_lane_right_distance;
 static double _max_boundingbox_side;
 static double _remove_points_upto;
 static double _cluster_merge_threshold;
+
+static bool _use_gpu;
+static std::chrono::system_clock::time_point _start, _end;
 
 void transformBoundingBox(const jsk_recognition_msgs::BoundingBox& in_boundingbox, jsk_recognition_msgs::BoundingBox& out_boundingbox, const std::string& in_target_frame, const std_msgs::Header& in_header)
 {
@@ -289,6 +295,64 @@ void keepLanePoints(const pcl::PointCloud<pcl::PointXYZ>::Ptr in_cloud_ptr,
 	extract.setNegative(true);//true removes the indices, false leaves only the indices
 	extract.filter(*out_cloud_ptr);
 }
+
+#ifdef GPU_CLUSTERING
+std::vector<ClusterPtr> clusterAndColorGpu(const pcl::PointCloud<pcl::PointXYZ>::Ptr in_cloud_ptr,
+											pcl::PointCloud<pcl::PointXYZRGB>::Ptr out_cloud_ptr,
+											jsk_recognition_msgs::BoundingBoxArray& in_out_boundingbox_array,
+											lidar_tracker::centroids& in_out_centroids,
+											double in_max_cluster_distance=0.5)
+{
+	std::vector<ClusterPtr> clusters;
+
+	//Convert input point cloud to vectors of x, y, and z
+
+	int size = in_cloud_ptr->points.size();
+
+	if (size == 0)
+		return clusters;
+
+	float *tmp_x, *tmp_y, *tmp_z;
+
+	tmp_x = (float *)malloc(sizeof(float) * size);
+	tmp_y = (float *)malloc(sizeof(float) * size);
+	tmp_z = (float *)malloc(sizeof(float) * size);
+
+	for (int i = 0; i < size; i++) {
+		pcl::PointXYZ tmp_point = in_cloud_ptr->at(i);
+
+		tmp_x[i] = tmp_point.x;
+		tmp_y[i] = tmp_point.y;
+		tmp_z[i] = tmp_point.z;
+	}
+
+	GpuEuclideanCluster gecl_cluster;
+
+	gecl_cluster.setInputPoints(tmp_x, tmp_y, tmp_z, size);
+	gecl_cluster.setThreshold(in_max_cluster_distance);
+	gecl_cluster.setMinClusterPts (_cluster_size_min);
+	gecl_cluster.setMaxClusterPts (_cluster_size_max);
+	gecl_cluster.extractClusters();
+	std::vector<GpuEuclideanCluster::GClusterIndex> cluster_indices = gecl_cluster.getOutput();
+
+	unsigned int k = 0;
+
+	for (auto it = cluster_indices.begin(); it != cluster_indices.end(); it++)
+	{
+		ClusterPtr cluster(new Cluster());
+		cluster->SetCloud(in_cloud_ptr, it->points_in_cluster, _velodyne_header, k, (int)_colors[k].val[0], (int)_colors[k].val[1], (int)_colors[k].val[2], "", _pose_estimation);
+		clusters.push_back(cluster);
+
+		k++;
+	}
+
+	free(tmp_x);
+	free(tmp_y);
+	free(tmp_z);
+
+	return clusters;
+}
+#endif
 
 std::vector<ClusterPtr> clusterAndColor(const pcl::PointCloud<pcl::PointXYZ>::Ptr in_cloud_ptr,
 		pcl::PointCloud<pcl::PointXYZRGB>::Ptr out_cloud_ptr,
@@ -471,8 +535,16 @@ void segmentByDistance(const pcl::PointCloud<pcl::PointXYZ>::Ptr in_cloud_ptr,
 	std::vector <ClusterPtr> all_clusters;
 	for(unsigned int i=0; i<cloud_segments_array.size(); i++)
 	{
+#ifdef GPU_CLUSTERING
+    std::vector<ClusterPtr> local_clusters;
+		if (_use_gpu) {
+			local_clusters = clusterAndColorGpu(cloud_segments_array[i], out_cloud_ptr, in_out_boundingbox_array, in_out_centroids, _clustering_thresholds[i]);
+		} else {
+			local_clusters = clusterAndColor(cloud_segments_array[i], out_cloud_ptr, in_out_boundingbox_array, in_out_centroids, _clustering_thresholds[i]);
+		}
+#else
 		std::vector<ClusterPtr> local_clusters = clusterAndColor(cloud_segments_array[i], out_cloud_ptr, in_out_boundingbox_array, in_out_centroids, _clustering_thresholds[i]);
-
+#endif
 		all_clusters.insert(all_clusters.end(), local_clusters.begin(), local_clusters.end());
 	}
 
@@ -761,6 +833,8 @@ void removePointsUpTo(const pcl::PointCloud<pcl::PointXYZ>::Ptr in_cloud_ptr, pc
 
 void velodyne_callback(const sensor_msgs::PointCloud2ConstPtr& in_sensor_cloud)
 {
+	_start = std::chrono::system_clock::now(); // 計測開始時間
+
 	if (!_using_sensor_cloud)
 	{
 		_using_sensor_cloud = true;
@@ -785,10 +859,6 @@ void velodyne_callback(const sensor_msgs::PointCloud2ConstPtr& in_sensor_cloud)
 
 		_velodyne_header = in_sensor_cloud->header;
 
-		cv::TickMeter timer;
-
-		timer.reset();timer.start();
-
 		if (_remove_points_upto > 0.0)
 		{
 			removePointsUpTo(current_sensor_cloud_ptr, removed_points_cloud_ptr, _remove_points_upto);
@@ -796,27 +866,18 @@ void velodyne_callback(const sensor_msgs::PointCloud2ConstPtr& in_sensor_cloud)
 		else
 			removed_points_cloud_ptr = current_sensor_cloud_ptr;
 
-		//std::cout << "Downsample before: " <<removed_points_cloud_ptr->points.size();
 		if (_downsample_cloud)
 			downsampleCloud(removed_points_cloud_ptr, downsampled_cloud_ptr, _leaf_size);
 		else
 			downsampled_cloud_ptr =removed_points_cloud_ptr;
 
-		//std::cout << " after: " <<downsampled_cloud_ptr->points.size();
-		timer.stop(); //std::cout << "downsampleCloud:" << timer.getTimeMilli() << "ms" << std::endl;
-
-		timer.reset();timer.start();
 		clipCloud(downsampled_cloud_ptr, clipped_cloud_ptr, _clip_min_height, _clip_max_height);
-		timer.stop(); //std::cout << "clipCloud:" << clipped_cloud_ptr->points.size() << "time " << timer.getTimeMilli() << "ms" << std::endl;
 
-		timer.reset();timer.start();
 		if(_keep_lanes)
 			keepLanePoints(clipped_cloud_ptr, inlanes_cloud_ptr, _keep_lane_left_distance, _keep_lane_right_distance);
 		else
 			inlanes_cloud_ptr = clipped_cloud_ptr;
-		timer.stop(); //std::cout << "keepLanePoints:" << timer.getTimeMilli() << "ms" << std::endl;
 
-		timer.reset();timer.start();
 		if(_remove_ground)
 		{
 			removeFloor(inlanes_cloud_ptr, nofloor_cloud_ptr, onlyfloor_cloud_ptr);
@@ -824,49 +885,40 @@ void velodyne_callback(const sensor_msgs::PointCloud2ConstPtr& in_sensor_cloud)
 		}
 		else
 			nofloor_cloud_ptr = inlanes_cloud_ptr;
-		timer.stop(); //std::cout << "removeFloor:" << timer.getTimeMilli() << "ms" << std::endl;
 
 		publishCloud(&_pub_points_lanes_cloud, nofloor_cloud_ptr);
 
-		timer.reset();timer.start();
 		if (_use_diffnormals)
 			differenceNormalsSegmentation(nofloor_cloud_ptr, diffnormals_cloud_ptr);
 		else
 			diffnormals_cloud_ptr = nofloor_cloud_ptr;
-		timer.stop(); //std::cout << "differenceNormalsSegmentation:" << timer.getTimeMilli() << "ms" << std::endl;
 
-		timer.reset();timer.start();
 		segmentByDistance(diffnormals_cloud_ptr, colored_clustered_cloud_ptr, boundingbox_array, centroids, cloud_clusters, polygon_array, pictograms_array);
-		//timer.stop(); std::cout << "segmentByDistance:" << timer.getTimeMilli() << "ms" << std::endl;
 
-		timer.reset();timer.start();
 		publishColorCloud(&_pub_cluster_cloud, colored_clustered_cloud_ptr);
-		timer.stop(); //std::cout << "publishColorCloud:" << timer.getTimeMilli() << "ms" << std::endl;
+
 		// Publish BB
 		boundingbox_array.header = _velodyne_header;
 
 		_pub_jsk_hulls.publish(polygon_array);//publish convex hulls
 		_pub_text_pictogram.publish(pictograms_array);//publish_ids
 
-		timer.reset();timer.start();
 		publishBoundingBoxArray(&_pub_jsk_boundingboxes, boundingbox_array, _output_frame, _velodyne_header);
 		centroids.header = _velodyne_header;
-		timer.stop(); //std::cout << "publishBoundingBoxArray:" << timer.getTimeMilli() << "ms" << std::endl;
 
-		timer.reset();timer.start();
 		publishCentroids(&_centroid_pub, centroids, _output_frame, _velodyne_header);
-		timer.stop(); //std::cout << "publishCentroids:" << timer.getTimeMilli() << "ms" << std::endl;
 
 		_marker_pub.publish(_visualization_marker);
 		_visualization_marker.points.clear();//transform? is it used?
 		cloud_clusters.header = _velodyne_header;
 
-		timer.reset();timer.start();
 		publishCloudClusters(&_pub_clusters_message, cloud_clusters, _output_frame, _velodyne_header);
-		timer.stop(); //std::cout << "publishCloudClusters:" << timer.getTimeMilli() << "ms" << std::endl << std::endl;
 
 		_using_sensor_cloud = false;
 	}
+	_end = std::chrono::system_clock::now();  // 計測終了時間
+  double elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(_end-_start).count(); //処理に要した時間をミリ秒に変換
+  ROS_INFO("Euclidean Clustering : %f", elapsed);
 }
 
 /*
@@ -1021,6 +1073,7 @@ int main (int argc, char** argv)
 
 	private_nh.param("remove_points_upto", _remove_points_upto, 0.0);		ROS_INFO("remove_points_upto: %f", _remove_points_upto);
 
+	private_nh.param("use_gpu", _use_gpu, false);				ROS_INFO("use_gpu: %d", _use_gpu);
 
 	_velodyne_transform_available = false;
 
