@@ -970,26 +970,26 @@ void PlanningHelpers::CalculateRollInTrajectories(const WayPoint& carPos, const 
 
 	vector<WayPoint> RollOutStratPath;
 	///***   Smoothing From Car Heading Section ***///
-//	if(bHeadingSmooth)
-//	{
-//		unsigned int num_of_strait_points = carTipMargin / pathDensity;
-//		int closest_for_each_iteration = 0;
-//		WayPoint np = GetPerpendicularOnTrajectory(originalCenter, rearPos, dummyd, closest_for_each_iteration);
-//		np.pos = rearPos.pos;
-//
-//		RollOutStratPath.push_back(np);
-//		for(unsigned int i = 0; i < num_of_strait_points; i++)
-//		{
-//			p = RollOutStratPath.at(i);
-//			p.pos.x = p.pos.x +  pathDensity*cos(p.pos.a);
-//			p.pos.y = p.pos.y +  pathDensity*sin(p.pos.a);
-//			np = GetPerpendicularOnTrajectory(originalCenter, p, dummyd, closest_for_each_iteration);
-//			np.pos = p.pos;
-//			RollOutStratPath.push_back(np);
-//		}
-//
-//		initial_roll_in_distance = GetPerpDistanceToTrajectorySimple(originalCenter, RollOutStratPath.at(RollOutStratPath.size()-1), close_index);
-//	}
+	if(bHeadingSmooth)
+	{
+		unsigned int num_of_strait_points = carTipMargin / pathDensity;
+		int closest_for_each_iteration = 0;
+		WayPoint np = GetPerpendicularOnTrajectory_obsolete(originalCenter, carPos, dummyd, closest_for_each_iteration);
+		np.pos = carPos.pos;
+
+		RollOutStratPath.push_back(np);
+		for(unsigned int i = 0; i < num_of_strait_points; i++)
+		{
+			p = RollOutStratPath.at(i);
+			p.pos.x = p.pos.x +  pathDensity*cos(p.pos.a);
+			p.pos.y = p.pos.y +  pathDensity*sin(p.pos.a);
+			np = GetPerpendicularOnTrajectory_obsolete(originalCenter, p, dummyd, closest_for_each_iteration);
+			np.pos = p.pos;
+			RollOutStratPath.push_back(np);
+		}
+
+		initial_roll_in_distance = GetPerpDistanceToTrajectorySimple_obsolete(originalCenter, RollOutStratPath.at(RollOutStratPath.size()-1), close_index);
+	}
 	///***   -------------------------------- ***///
 
 
@@ -1145,21 +1145,16 @@ void PlanningHelpers::CalculateRollInTrajectories(const WayPoint& carPos, const 
 		rollInPaths.at(i).insert(rollInPaths.at(i).begin(), execluded_from_smoothing.at(i).begin(), execluded_from_smoothing.at(i).end());
 
 	///***   Smoothing From Car Heading Section ***///
-//	if(bHeadingSmooth)
-//	{
-//		for(unsigned int i=0; i< rollOutNumber+1 ; i++)
-//		{
-//			unsigned int cut_index = GetClosestNextPointIndex(rollInPaths.at(i), RollOutStratPath.at(RollOutStratPath.size()-1));
-//			rollInPaths.at(i).erase(rollInPaths.at(i).begin(), rollInPaths.at(i).begin()+cut_index);
-//			rollInPaths.at(i).insert(rollInPaths.at(i).begin(), RollOutStratPath.begin(), RollOutStratPath.end());
-//		}
-//	}
-	///***   -------------------------------- ***///
-
-	for(unsigned int i=0; i< rollOutNumber+1 ; i++)
+	if(bHeadingSmooth)
 	{
-		SmoothPath(rollInPaths.at(i), SmoothDataWeight, SmoothWeight, SmoothTolerance);
+		for(unsigned int i=0; i< rollOutNumber+1 ; i++)
+		{
+			unsigned int cut_index = GetClosestNextPointIndex(rollInPaths.at(i), RollOutStratPath.at(RollOutStratPath.size()-1));
+			rollInPaths.at(i).erase(rollInPaths.at(i).begin(), rollInPaths.at(i).begin()+cut_index);
+			rollInPaths.at(i).insert(rollInPaths.at(i).begin(), RollOutStratPath.begin(), RollOutStratPath.end());
+		}
 	}
+	///***   -------------------------------- ***///
 
 	d_limit = 0;
 	for(unsigned int j = smoothing_end_index; j < originalCenter.size(); j++)
@@ -1188,6 +1183,11 @@ void PlanningHelpers::CalculateRollInTrajectories(const WayPoint& carPos, const 
 			  sampledPoints.push_back(p);
 		  }
 	  }
+
+	for(unsigned int i=0; i< rollOutNumber+1 ; i++)
+	{
+		SmoothPath(rollInPaths.at(i), SmoothDataWeight, SmoothWeight, SmoothTolerance);
+	}
 
 //	for(unsigned int i=0; i< rollInPaths.size(); i++)
 //		CalcAngleAndCost(rollInPaths.at(i));

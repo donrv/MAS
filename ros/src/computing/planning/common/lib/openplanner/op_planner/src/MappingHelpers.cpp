@@ -416,8 +416,8 @@ void MappingHelpers::ConstructRoadNetworkFromRosMessage(const std::vector<Utilit
 	LinkMissingBranchingWayPoints(map);
 
 	//Link StopLines and Traffic Lights
-	//LinkTrafficLightsAndStopLines(map);
-	LinkTrafficLightsAndStopLinesConData(conn_data, id_replace_list, map);
+	LinkTrafficLightsAndStopLines(map);
+	//LinkTrafficLightsAndStopLinesConData(conn_data, id_replace_list, map);
 
 	//Curbs
 	ExtractCurbData(curb_data, line_data, points_data, origin, map);

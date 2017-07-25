@@ -424,7 +424,6 @@ void PlannerX::UpdatePlanningParams()
 	nh.getParam("/dp_planner/verticalSafetyDistance", params.verticalSafetyDistance);
 
 	nh.getParam("/dp_planner/enableLaneChange", params.enableLaneChange);
-	nh.getParam("/dp_planner/enabTrajectoryVelocities", params.enabTrajectoryVelocities);
 
 	nh.getParam("/dp_planner/enableCurbObstacles", m_bEnableCurbObstacles);
 	nh.getParam("/dp_planner/enableObjectTracking", m_bEnableTracking);

@@ -2134,9 +2134,9 @@ params :
         delim    : ':='
   - name  : dp_planner
     vars  :
-    - name : enabTrajectoryVelocities
-      desc : Enable Use Pure Pursuit
-      label: Use Pure Pursuit
+    - name : enableCurbObstacles
+      desc : Detect curbs from Map
+      label: Detect Curbs
       kind : checkbox
       v    : True
       cmd_param:

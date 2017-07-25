@@ -24,8 +24,7 @@
 	<arg name="enableHeadingSmoothing" 		default="false" />
 	<arg name="enableTrafficLightBehavior" 	default="false" />
 	<arg name="enableStopSignBehavior" 		default="false" />	
-	<arg name="enableLaneChange" 			default="false" />
-	<arg name="enabTrajectoryVelocities"	default="true" /> <!-- enable when using autoware's pure pursuit node-->
+	<arg name="enableLaneChange" 			default="false" />	
 	
 	<arg name="width" 						default="1.85"  />
 	<arg name="length" 						default="4.2"  />
@@ -72,8 +71,7 @@
 		<param name="enableHeadingSmoothing" 		value="$(arg enableHeadingSmoothing)" />
 		<param name="enableTrafficLightBehavior" 	value="$(arg enableTrafficLightBehavior)" />
 		<param name="enableStopSignBehavior" 		value="$(arg enableStopSignBehavior)" />		
-		<param name="enableLaneChange" 				value="$(arg enableLaneChange)" />
-		<param name="enabTrajectoryVelocities" 		value="$(arg enabTrajectoryVelocities)" />
+		<param name="enableLaneChange" 				value="$(arg enableLaneChange)" />		
 		
 		<param name="width" 						value="$(arg width)" />
 		<param name="length" 						value="$(arg length)" />

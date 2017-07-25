@@ -772,8 +772,6 @@ public:
 	bool 	enableTrafficLightBehavior;
 	bool 	enableStopSignBehavior;
 
-	bool 	enabTrajectoryVelocities;
-
 	PlanningParams()
 	{
 		maxSpeed 						= 3;
@@ -804,7 +802,6 @@ public:
 		enableTrafficLightBehavior		= false;
 		enableLaneChange 				= false;
 		enableStopSignBehavior			= false;
-		enabTrajectoryVelocities		= false;
 	}
 };
 
