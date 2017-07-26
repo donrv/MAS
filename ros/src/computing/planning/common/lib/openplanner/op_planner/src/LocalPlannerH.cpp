@@ -244,7 +244,7 @@ void LocalPlannerH::InitPolygons()
  	double critical_long_front_distance =  m_CarInfo.wheel_base/2.0 + m_CarInfo.length/2.0 + m_params.verticalSafetyDistance;
 	//double critical_long_back_distance =  m_CarInfo.length/2.0 + m_params.verticalSafetyDistance - m_CarInfo.wheel_base/2.0;
 
- 	pValues->minStoppingDistance = -pow(car_state.speed, 2)/(m_CarInfo.max_deceleration) - 1;
+ 	pValues->minStoppingDistance = -pow(car_state.speed, 2)/(m_CarInfo.max_deceleration);
 
  	pValues->iCentralTrajectory		= m_pCurrentBehaviorState->m_pParams->rollOutNumber/2;
 
@@ -595,7 +595,7 @@ bool LocalPlannerH::CalculateObstacleCosts(PlannerHNS::RoadNetwork& map, const P
  void LocalPlannerH::SimulateOdoPosition(const double& dt, const PlannerHNS::VehicleState& vehicleState)
  {
 	SetSimulatedTargetOdometryReadings(vehicleState.speed, vehicleState.steer, vehicleState.shift);
-	UpdateState(vehicleState, true);
+	UpdateState(vehicleState, false);
 	LocalizeMe(dt);
  }
 

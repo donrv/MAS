@@ -49,7 +49,7 @@ OpenPlannerSimulatorPerception::OpenPlannerSimulatorPerception()
 	nh.getParam("/op_simulator_perception/simObjNumber" 			, m_DecParams.nSimuObjs);
 	nh.getParam("/op_simulator_perception/GuassianErrorFactor" 	, m_DecParams.errFactor);
 
-	pub_DetectedObjects 	= nh.advertise<lidar_tracker::CloudClusterArray>("cloud_clusters",1);
+	pub_DetectedObjects 	= nh.advertise<autoware_msgs::CloudClusterArray>("cloud_clusters",1);
 
 	for(int i=1; i <= m_DecParams.nSimuObjs; i++)
 	{
@@ -89,16 +89,16 @@ void OpenPlannerSimulatorPerception::callbackGetSimuData(const geometry_msgs::Po
 		return;
 
 	int index = -1;
-	for(int i = 0; i < m_ObjClustersArray.clusters.size() ; i++ )
+	for(unsigned int i = 0; i < m_ObjClustersArray.clusters.size() ; i++ )
 	{
-		if(m_ObjClustersArray.clusters.at(i).id == obj_id)
+		if((int)m_ObjClustersArray.clusters.at(i).id == obj_id)
 		{
 			index = i;
 			break;
 		}
 	}
 
-	lidar_tracker::CloudCluster c = GenerateSimulatedObstacleCluster(msg.poses.at(2).position.x, msg.poses.at(2).position.y, msg.poses.at(2).position.z, 50, msg.poses.at(1));
+	autoware_msgs::CloudCluster c = GenerateSimulatedObstacleCluster(msg.poses.at(2).position.y, msg.poses.at(2).position.x, msg.poses.at(2).position.y, 50, msg.poses.at(1));
 	c.id = obj_id;
 
 	if(index >= 0) // update existing
@@ -115,9 +115,10 @@ void OpenPlannerSimulatorPerception::callbackGetSimuData(const geometry_msgs::Po
 	}
 }
 
-lidar_tracker::CloudCluster OpenPlannerSimulatorPerception::GenerateSimulatedObstacleCluster(const double& width, const double& length, const double& height, const int& nPoints, const geometry_msgs::Pose& centerPose)
+
+autoware_msgs::CloudCluster OpenPlannerSimulatorPerception::GenerateSimulatedObstacleCluster(const double& width, const double& length, const double& height, const int& nPoints, const geometry_msgs::Pose& centerPose)
 {
-	lidar_tracker::CloudCluster cluster;
+	autoware_msgs::CloudCluster cluster;
 
 	cluster.centroid_point.point.x = centerPose.position.x;
 	cluster.centroid_point.point.y = centerPose.position.y;

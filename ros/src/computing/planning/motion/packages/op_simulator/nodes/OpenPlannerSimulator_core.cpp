@@ -219,7 +219,7 @@ void OpenPlannerSimulator::callbackGetInitPose(const geometry_msgs::PoseWithCova
 {
 	if(!bInitPos)
 	{
-		ROS_INFO("init Simulation Rviz Pose Data: x=%f, y=%f, z=%f, freq=%d", msg->pose.pose.position.x, msg->pose.pose.position.y, msg->pose.pose.position.z);
+		ROS_INFO("init Simulation Rviz Pose Data: x=%f, y=%f, z=%f", msg->pose.pose.position.x, msg->pose.pose.position.y, msg->pose.pose.position.z);
 
 		geometry_msgs::Pose p;
 		p.position.x  = msg->pose.pose.position.x + m_OriginPos.position.x;
@@ -288,7 +288,7 @@ void OpenPlannerSimulator::GetTransformFromTF(const std::string parent_frame, co
 	}
 }
 
-void OpenPlannerSimulator::callbackGetCloudClusters(const lidar_tracker::CloudClusterArrayConstPtr& msg)
+void OpenPlannerSimulator::callbackGetCloudClusters(const autoware_msgs::CloudClusterArrayConstPtr& msg)
 {
 	m_OriginalClusters.clear();
 	int nOriginalPoints=0, nContourPoints = 0;
@@ -417,7 +417,7 @@ void OpenPlannerSimulator::visualizePath(const std::vector<PlannerHNS::WayPoint>
 }
 
 void OpenPlannerSimulator::ConvertFromAutowareCloudClusterObstaclesToPlannerH(const PlannerHNS::WayPoint& currState, const PlannerHNS::CAR_BASIC_INFO& car_info,
-		const lidar_tracker::CloudClusterArray& clusters, std::vector<PlannerHNS::DetectedObject>& obstacles_list,
+		const autoware_msgs::CloudClusterArray& clusters, std::vector<PlannerHNS::DetectedObject>& obstacles_list,
 		int& nOriginalPoints, int& nContourPoints)
 {
 	PlannerHNS::Mat3 rotationMat(-currState.pos.a);
@@ -427,7 +427,7 @@ void OpenPlannerSimulator::ConvertFromAutowareCloudClusterObstaclesToPlannerH(co
 	int nOrPoints = 0;
 	for(unsigned int i =0; i < clusters.clusters.size(); i++)
 	{
-		if(clusters.clusters.at(i).id == m_SimParams.id)
+		if((int)clusters.clusters.at(i).id == m_SimParams.id)
 		{
 			//std::cout << "Skip Same ID " << std::endl;
 			continue;
@@ -435,7 +435,7 @@ void OpenPlannerSimulator::ConvertFromAutowareCloudClusterObstaclesToPlannerH(co
 
 		PolygonGenerator polyGen;
 		PlannerHNS::DetectedObject obj;
-		obj.center.pos = GPSPoint(clusters.clusters.at(i).centroid_point.point.x,
+		obj.center.pos = PlannerHNS::GPSPoint(clusters.clusters.at(i).centroid_point.point.x,
 				clusters.clusters.at(i).centroid_point.point.y,
 				clusters.clusters.at(i).centroid_point.point.z,0);
 				//tf::getYaw(clusters.clusters.at(i).bounding_box.pose.orientation));
@@ -453,8 +453,8 @@ void OpenPlannerSimulator::ConvertFromAutowareCloudClusterObstaclesToPlannerH(co
 		relative_point = translationMat*obj.center.pos;
 		relative_point = rotationMat*relative_point;
 
-		double distance_x = fabs(relative_point.x);
-		double distance_y = fabs(relative_point.y);
+//		double distance_x = fabs(relative_point.x);
+//		double distance_y = fabs(relative_point.y);
 
 //		double size = (obj.w+obj.l)/2.0;
 //		if(size <= 0.25 || size >= 5 || distance_y > 20.0 || distance_x > 20.0)
@@ -673,7 +673,7 @@ void OpenPlannerSimulator::PlannerMainLoop()
 			{
 				PlannerHNS::RelativeInfo info;
 				bool ret = PlannerHNS::PlanningHelpers::GetRelativeInfoRange(m_LocalPlanner.m_TotalPath, m_LocalPlanner.state, 0.75, info);
-				if(ret == true && info.iGlobalPath >= 0 &&  info.iGlobalPath < m_LocalPlanner.m_TotalPath.size() && info.iFront > 0 && info.iFront < m_LocalPlanner.m_TotalPath.at(info.iGlobalPath).size())
+				if(ret == true && info.iGlobalPath >= 0 &&  info.iGlobalPath < (int)m_LocalPlanner.m_TotalPath.size() && info.iFront > 0 && info.iFront < (int)m_LocalPlanner.m_TotalPath.at(info.iGlobalPath).size())
 				{
 					double remaining_distance =  m_LocalPlanner.m_TotalPath.at(info.iGlobalPath).at(m_LocalPlanner.m_TotalPath.at(info.iGlobalPath).size()-1).cost - (m_LocalPlanner.m_TotalPath.at(info.iGlobalPath).at(info.iFront).cost + info.to_front_distance);
 					if(remaining_distance <= REPLANNING_DISTANCE)
