@@ -83,9 +83,9 @@ namespace PlannerXNS
 {
 
 #define _DATASET_GENERATION_BLOCK
-#define SIMU_OBSTACLE_WIDTH 3.5
+#define SIMU_OBSTACLE_WIDTH 1.5
 #define SIMU_OBSTACLE_HEIGHT 0.5
-#define SIMU_OBSTACLE_LENGTH 2.0
+#define SIMU_OBSTACLE_LENGTH 1.0
 
 enum SIGNAL_TYPE{SIMULATION_SIGNAL, ROBOT_SIGNAL};
 enum MAP_SOURCE_TYPE{MAP_AUTOWARE, MAP_FOLDER, MAP_KML_FILE};
@@ -101,13 +101,14 @@ protected:
 
 	timespec m_Timer;
 	timespec m_TrafficLightTimer;
+	double m_TotalPlanningTime;
+	double m_LogAndVisualizeTime;
 	int m_counter;
 	int m_frequency;
 
 protected:
 	//PlannerHNS::BehaviorPrediction m_ParticlePred;
 	SimulationNS::SimpleTracker m_ObstacleTracking;
-	//SimulationNS::CarState m_State;
 	PlannerHNS::LocalPlannerH m_LocalPlanner;
 
 	geometry_msgs::Pose m_OriginPos;
@@ -138,6 +139,8 @@ protected:
 	PlannerHNS::TrafficLightState  m_CurrLightStatus;
 	std::vector<PlannerHNS::TrafficLight> m_CurrTrafficLight;
 	std::vector<PlannerHNS::TrafficLight> m_PrevTrafficLight;
+
+	PlannerHNS::PlanningParams m_LocalPlannerParams;
 
 	bool bNewOutsideControl;
 	int m_bOutsideControl;
@@ -174,6 +177,7 @@ protected:
   	std::vector<visualization_msgs::MarkerArray> m_DetectedPolygonsActual;
   	visualization_msgs::MarkerArray m_PredictedTrajectoriesDummy;
   	visualization_msgs::MarkerArray m_PredictedTrajectoriesActual;
+  	visualization_msgs::MarkerArray m_AllConnectedLines;
 
   	int m_nDetectedObjRepresentations;
   	int m_nDummyObjPerRep;
@@ -201,6 +205,8 @@ protected:
 	ros::Publisher pub_GoalPoint;
 	ros::Publisher pub_AStarStartPoint;
 	ros::Publisher pub_AStarGoalPoint;
+
+	ros::Publisher pub_ConnectedPointsRviz;
 
 	ros::Publisher pub_DetectedPolygonsRviz;
 	ros::Publisher pub_TrackedObstaclesRviz;

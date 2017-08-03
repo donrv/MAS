@@ -16,7 +16,7 @@
 #include "MatrixOperations.h"
 
 
-#define DETECTION_RADIUS 150 // meters
+#define DETECTION_RADIUS 120 // meters
 
 namespace PlannerXNS
 {
@@ -238,9 +238,12 @@ void RosHelpers::ConvertFromPlannerHToAutowareVisualizePathFormat(const std::vec
 	lane_waypoint_marker.action = visualization_msgs::Marker::ADD;
 	lane_waypoint_marker.scale.x = 0.1;
 	lane_waypoint_marker.scale.y = 0.1;
-	//lane_waypoint_marker.scale.z = 0.1;
+	lane_waypoint_marker.scale.z = 0.1;
 	lane_waypoint_marker.frame_locked = false;
-	std_msgs::ColorRGBA  total_color, curr_color;
+	lane_waypoint_marker.color.r = 0.0;
+	lane_waypoint_marker.color.g = 1.0;
+	lane_waypoint_marker.color.b = 0.0;
+	lane_waypoint_marker.color.a = 0.9;
 
 
 	int count = 0;
@@ -262,10 +265,9 @@ void RosHelpers::ConvertFromPlannerHToAutowareVisualizePathFormat(const std::vec
 				lane_waypoint_marker.points.push_back(point);
 			}
 
-			lane_waypoint_marker.color.a = 0.9;
-			if(localPlanner.m_TrajectoryCostsCalculatotor.m_TrajectoryCosts.size() == paths.size())
+			if(localPlanner.m_TrajectoryCostsCalculatotor.m_TrajectoryCosts.size() == paths.at(il).size())
 			{
-				float norm_cost = localPlanner.m_TrajectoryCostsCalculatotor.m_TrajectoryCosts.at(i).cost * paths.size();
+				float norm_cost = localPlanner.m_TrajectoryCostsCalculatotor.m_TrajectoryCosts.at(i).cost * paths.at(il).size();
 				if(norm_cost <= 1.0)
 				{
 					lane_waypoint_marker.color.r = norm_cost;
@@ -279,8 +281,8 @@ void RosHelpers::ConvertFromPlannerHToAutowareVisualizePathFormat(const std::vec
 			}
 			else
 			{
-				lane_waypoint_marker.color.r = 0.0;
-				lane_waypoint_marker.color.g = 1.0;
+				lane_waypoint_marker.color.r = 1.0;
+				lane_waypoint_marker.color.g = 0.0;
 			}
 
 			if(i == localPlanner.m_iSafeTrajectory && il == localPlanner.m_iCurrentTotalPathId)
@@ -698,6 +700,10 @@ void RosHelpers::ConvertFromAutowareCloudClusterObstaclesToPlannerH(const Planne
 		double distance_y = fabs(relative_point.y);
 
 		if((distance_x  <= car_info.length/1.5 && distance_y <= car_info.width/1.5) || obj.distance_to_center > DETECTION_RADIUS) // don't detect yourself
+			continue;
+
+		double area_size = sqrt(obj.w*obj.w + obj.l*obj.l);
+		if( area_size < 0.5)
 			continue;
 
 		nOrPoints += point_cloud.points.size();

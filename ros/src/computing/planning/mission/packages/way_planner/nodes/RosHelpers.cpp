@@ -541,7 +541,7 @@ void RosHelpers::FindIncommingBranches(const std::vector<std::vector<PlannerHNS:
 	static int detection_range = 30; // meter
 	if(globalPaths.size() > 0)
 	{
-		int close_index = PlannerHNS::PlanningHelpers::GetClosestNextPointIndex(globalPaths.at(0), currPose);
+		int close_index = PlannerHNS::PlanningHelpers::GetClosestNextPointIndexFast(globalPaths.at(0), currPose);
 		PlannerHNS::WayPoint closest_wp = globalPaths.at(0).at(close_index);
 		double d = 0;
 		for(unsigned int i=close_index+1; i < globalPaths.at(0).size(); i++)

@@ -32,7 +32,12 @@ public:
 	vector<TrajectoryCost> m_TrajectoryCosts;
 	PlanningParams m_Params;
 	PolygonShape m_SafetyBorder;
-	//vector<GPSPoint> m_SafetyBox;
+	vector<WayPoint> m_AllContourPoints;
+	double m_WeightPriority;
+	double m_WeightTransition;
+	double m_WeightLong;
+	double m_WeightLat;
+	double m_WeightLaneChange;
 
 
 

@@ -15,6 +15,11 @@ namespace PlannerHNS
 TrajectoryCosts::TrajectoryCosts()
 {
 	m_PrevCostIndex = -1;
+	m_WeightPriority = 1.0;
+	m_WeightTransition = 1.0;
+	m_WeightLong = 1.0;
+	m_WeightLat = 1.0;
+	m_WeightLaneChange = 1.0;
 }
 
 TrajectoryCosts::~TrajectoryCosts()
@@ -51,19 +56,20 @@ TrajectoryCost TrajectoryCosts::DoOneStep(const vector<vector<vector<WayPoint> >
 
 	CalculateTransitionCosts(m_TrajectoryCosts, currIndex, params);
 
-	vector<WayPoint> contourPoints;
+
 	WayPoint p;
+	m_AllContourPoints.clear();
 	for(unsigned int io=0; io<obj_list.size(); io++)
 	{
 		for(unsigned int icon=0; icon < obj_list.at(io).contour.size(); icon++)
 		{
 			p.pos = obj_list.at(io).contour.at(icon);
 			p.v = obj_list.at(io).center.v;
-			contourPoints.push_back(p);
+			m_AllContourPoints.push_back(p);
 		}
 	}
 
-	CalculateLateralAndLongitudinalCosts(m_TrajectoryCosts, rollOuts, totalPaths, currState, contourPoints, params, carInfo, vehicleState);
+	CalculateLateralAndLongitudinalCosts(m_TrajectoryCosts, rollOuts, totalPaths, currState, m_AllContourPoints, params, carInfo, vehicleState);
 
 	NormalizeCosts(m_TrajectoryCosts);
 
@@ -127,8 +133,7 @@ void TrajectoryCosts::CalculateLateralAndLongitudinalCosts(vector<TrajectoryCost
 	double critical_long_front_distance =  carInfo.wheel_base/2.0 + carInfo.length/2.0 + params.verticalSafetyDistance;
 	double critical_long_back_distance =  carInfo.length/2.0 + params.verticalSafetyDistance - carInfo.wheel_base/2.0;
 	int iCostIndex = 0;
-	PlannerHNS::Mat3 rotationMat(-currState.pos.a);
-	PlannerHNS::Mat3 translationMat(-currState.pos.x, -currState.pos.y);
+
 	PlannerHNS::Mat3 invRotationMat(currState.pos.a-M_PI_2);
 	PlannerHNS::Mat3 invTranslationMat(currState.pos.x, currState.pos.y);
 
@@ -162,12 +167,6 @@ void TrajectoryCosts::CalculateLateralAndLongitudinalCosts(vector<TrajectoryCost
 
 	top_left_car = invRotationMat*top_left_car;
 	top_left_car = invTranslationMat*top_left_car;
-
-//	m_SafetyBox.clear();
-//	m_SafetyBox.push_back(bottom_left);
-//	m_SafetyBox.push_back(bottom_right);
-//	m_SafetyBox.push_back(top_right);
-//	m_SafetyBox.push_back(top_left);
 
 	m_SafetyBorder.points.clear();
 	m_SafetyBorder.points.push_back(bottom_left) ;

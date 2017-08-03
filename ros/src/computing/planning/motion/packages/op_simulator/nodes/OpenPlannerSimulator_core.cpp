@@ -675,9 +675,13 @@ void OpenPlannerSimulator::PlannerMainLoop()
 				bool ret = PlannerHNS::PlanningHelpers::GetRelativeInfoRange(m_LocalPlanner.m_TotalPath, m_LocalPlanner.state, 0.75, info);
 				if(ret == true && info.iGlobalPath >= 0 &&  info.iGlobalPath < (int)m_LocalPlanner.m_TotalPath.size() && info.iFront > 0 && info.iFront < (int)m_LocalPlanner.m_TotalPath.at(info.iGlobalPath).size())
 				{
-					double remaining_distance =  m_LocalPlanner.m_TotalPath.at(info.iGlobalPath).at(m_LocalPlanner.m_TotalPath.at(info.iGlobalPath).size()-1).cost - (m_LocalPlanner.m_TotalPath.at(info.iGlobalPath).at(info.iFront).cost + info.to_front_distance);
+					PlannerHNS::WayPoint wp_end = m_LocalPlanner.m_TotalPath.at(info.iGlobalPath).at(m_LocalPlanner.m_TotalPath.at(info.iGlobalPath).size()-1);
+					PlannerHNS::WayPoint wp_first = m_LocalPlanner.m_TotalPath.at(info.iGlobalPath).at(info.iFront);
+					double remaining_distance =   hypot(wp_end.pos.y - wp_first.pos.y, wp_end.pos.x - wp_first.pos.x) + info.to_front_distance;
 					if(remaining_distance <= REPLANNING_DISTANCE)
 					{
+
+						cout << "Remaining Distance : " << remaining_distance << endl;
 						bMakeNewPlan = true;
 						if(m_SimParams.bLooper)
 							InitializeSimuCar(m_SimParams.startPose);
@@ -698,6 +702,8 @@ void OpenPlannerSimulator::PlannerMainLoop()
 
 				for(unsigned int i=0; i < generatedTotalPaths.size(); i++)
 				{
+					PlannerHNS::PlanningHelpers::FixPathDensity(generatedTotalPaths.at(i), 0.75);
+					PlannerHNS::PlanningHelpers::SmoothPath(generatedTotalPaths.at(i), 0.4, 0.25);
 					PlannerHNS::PlanningHelpers::CalcAngleAndCost(generatedTotalPaths.at(i));
 				}
 

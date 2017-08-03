@@ -98,7 +98,7 @@ void OpenPlannerSimulatorPerception::callbackGetSimuData(const geometry_msgs::Po
 		}
 	}
 
-	autoware_msgs::CloudCluster c = GenerateSimulatedObstacleCluster(msg.poses.at(2).position.y, msg.poses.at(2).position.x, msg.poses.at(2).position.y, 50, msg.poses.at(1));
+	autoware_msgs::CloudCluster c = GenerateSimulatedObstacleCluster(msg.poses.at(2).position.x, msg.poses.at(2).position.y, msg.poses.at(2).position.z, 50, msg.poses.at(1));
 	c.id = obj_id;
 
 	if(index >= 0) // update existing
@@ -140,10 +140,24 @@ autoware_msgs::CloudCluster OpenPlannerSimulatorPerception::GenerateSimulatedObs
 		UtilityHNS::UtilityH::GetTickCount(t);
 		PlannerHNS::WayPoint center_p;
 		srand(t.tv_nsec);
-		center_p.pos.x = ((double)(rand()%100)/100.0 - 0.5)* length;
+
+		center_p.pos.x = ((double)(rand()%100)/100.0 - 0.5);
+		if(center_p.pos.x >=0 && center_p.pos.x <= 0.3)
+			center_p.pos.x += 0.3;
+		else if(center_p.pos.x < 0 && center_p.pos.x >= -0.3)
+			center_p.pos.x -= 0.3;
+
+		center_p.pos.x *= length;
 
 		srand(t.tv_nsec/i);
-		center_p.pos.y = ((double)(rand()%100)/100.0 - 0.5)* width;
+		center_p.pos.y = ((double)(rand()%100)/100.0 - 0.5);
+
+		if(center_p.pos.y >=0 && center_p.pos.y <= 0.3)
+			center_p.pos.y += 0.3;
+		else if(center_p.pos.y < 0 && center_p.pos.y >= -0.3)
+			center_p.pos.y -= 0.3;
+
+		center_p.pos.y *= width;
 
 		srand(t.tv_nsec/i*i);
 		center_p.pos.z = ((double)(rand()%100)/100.0 - 0.5)* height;

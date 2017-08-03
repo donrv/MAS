@@ -372,6 +372,7 @@ public:
 	int 		stopLineID;
 	DIRECTION_TYPE bDir;
 	STATE_TYPE	behavior;
+	int 		iOriginalIndex;
 
 	Lane* pLane;
 	WayPoint* pLeft;
@@ -399,6 +400,8 @@ public:
 		collisionCost = 0;
 		laneChangeCost = 0;
 		stopLineID = -1;
+		behavior = INITIAL_STATE;
+		iOriginalIndex = 0;
 	}
 
 	WayPoint(const double& x, const double& y, const double& z, const double& a)
@@ -423,6 +426,8 @@ public:
 		collisionCost = 0;
 		laneChangeCost = 0;
 		stopLineID = -1;
+		iOriginalIndex = 0;
+		behavior = INITIAL_STATE;
 	}
 };
 

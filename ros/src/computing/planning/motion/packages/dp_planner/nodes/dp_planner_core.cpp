@@ -46,6 +46,8 @@ PlannerX::PlannerX()
 {
 
 	clock_gettime(0, &m_Timer);
+	m_LogAndVisualizeTime= 0;
+	m_TotalPlanningTime = 0;
 	m_counter = 0;
 	m_frequency = 0;
 	m_NextObjId = 1;
@@ -72,7 +74,7 @@ PlannerX::PlannerX()
 	bKmlMapLoaded = false;
 	m_bEnableTracking = true;
 	m_bEnableCurbObstacles = false;
-	m_ObstacleTracking.m_MAX_ASSOCIATION_DISTANCE = 6.0;
+	m_ObstacleTracking.m_MAX_ASSOCIATION_DISTANCE = 4.0;
 	m_ObstacleTracking.m_MAX_TRACKS_AFTER_LOSING = 5;
 	m_ObstacleTracking.m_MaxKeepTime = 5;
 	m_ObstacleTracking.m_DT = 0.12;
@@ -98,9 +100,9 @@ PlannerX::PlannerX()
 	m_OriginPos.position.y  = transform.getOrigin().y();
 	m_OriginPos.position.z  = transform.getOrigin().z();
 
-	pub_LocalPath = nh.advertise<autoware_msgs::lane>("final_waypoints", 100,true);
-	pub_LocalBasePath = nh.advertise<autoware_msgs::lane>("base_waypoints", 100,true);
-	pub_ClosestIndex = nh.advertise<std_msgs::Int32>("closest_waypoint", 100,true);
+	pub_LocalPath = nh.advertise<autoware_msgs::lane>("final_waypoints", 1,true);
+	pub_LocalBasePath = nh.advertise<autoware_msgs::lane>("base_waypoints", 1,true);
+	pub_ClosestIndex = nh.advertise<std_msgs::Int32>("closest_waypoint", 1,true);
 
 	pub_BehaviorState = nh.advertise<geometry_msgs::TwistStamped>("current_behavior", 1);
 	pub_GlobalPlanNodes = nh.advertise<geometry_msgs::PoseArray>("global_plan_nodes", 1);
@@ -109,6 +111,7 @@ PlannerX::PlannerX()
 	pub_AStarStartPoint = nh.advertise<geometry_msgs::PoseStamped>("global_plan_start", 1);
 	pub_AStarGoalPoint = nh.advertise<geometry_msgs::PoseStamped>("global_plan_goal", 1);
 
+	pub_ConnectedPointsRviz = nh.advertise<visualization_msgs::MarkerArray>("AllConnectedPoints", 1);
 	pub_DetectedPolygonsRviz = nh.advertise<visualization_msgs::MarkerArray>("detected_polygons", 1);
 	pub_TrackedObstaclesRviz = nh.advertise<jsk_recognition_msgs::BoundingBoxArray>("dp_planner_tracked_boxes", 1);
 	pub_LocalTrajectoriesRviz = nh.advertise<visualization_msgs::MarkerArray>("local_trajectories", 1);
@@ -118,7 +121,7 @@ PlannerX::PlannerX()
 	pub_BehaviorStateRviz = nh.advertise<visualization_msgs::Marker>("behavior_state", 1);
 	pub_SafetyBorderRviz  = nh.advertise<visualization_msgs::Marker>("safety_border", 1);
 	pub_cluster_cloud = nh.advertise<sensor_msgs::PointCloud2>("simu_points_cluster",1);
-	pub_SimuBoxPose	  = nh.advertise<geometry_msgs::PoseArray>("sim_box_pose_ego", 100);
+	pub_SimuBoxPose	  = nh.advertise<geometry_msgs::PoseArray>("sim_box_pose_ego", 1);
 
 
 	sub_initialpose 	= nh.subscribe("/initialpose", 				1,		&PlannerX::callbackGetInitPose, 		this);
@@ -162,24 +165,24 @@ PlannerX::PlannerX()
 	int bVelSource = 1;
 	nh.getParam("/dp_planner/enableOdometryStatus", bVelSource);
 	if(bVelSource == 0)
-		sub_robot_odom 			= nh.subscribe("/odom", 					100,	&PlannerX::callbackGetRobotOdom, 	this);
+		sub_robot_odom 			= nh.subscribe("/odom", 					1,	&PlannerX::callbackGetRobotOdom, 	this);
 	else if(bVelSource == 1)
-		sub_current_velocity 	= nh.subscribe("/current_velocity",		100,	&PlannerX::callbackGetVehicleStatus, 	this);
+		sub_current_velocity 	= nh.subscribe("/current_velocity",		1,	&PlannerX::callbackGetVehicleStatus, 	this);
 	else if(bVelSource == 2)
-		sub_can_info 			= nh.subscribe("/can_info",		100,	&PlannerX::callbackGetCanInfo, 	this);
+		sub_can_info 			= nh.subscribe("/can_info",		1,	&PlannerX::callbackGetCanInfo, 	this);
 
 
 
-	sub_EmergencyStop 			= nh.subscribe("/emergency_stop_signal", 	100,	&PlannerX::callbackGetEmergencyStop, 	this);
-	sub_TrafficLightStatus 		= nh.subscribe("/light_color", 		10,		&PlannerX::callbackGetTrafficLightStatus, 	this);
-	sub_TrafficLightSignals		= nh.subscribe("/roi_signal", 		10,		&PlannerX::callbackGetTrafficLightSignals, 	this);
+	sub_EmergencyStop 			= nh.subscribe("/emergency_stop_signal", 	1,	&PlannerX::callbackGetEmergencyStop, 	this);
+	sub_TrafficLightStatus 		= nh.subscribe("/light_color", 		1,		&PlannerX::callbackGetTrafficLightStatus, 	this);
+	sub_TrafficLightSignals		= nh.subscribe("/roi_signal", 		1,		&PlannerX::callbackGetTrafficLightSignals, 	this);
 
 	if(m_bEnableOutsideControl)
-		sub_OutsideControl 	= nh.subscribe("/usb_controller_r_signal", 	10,		&PlannerX::callbackGetOutsideControl, 	this);
+		sub_OutsideControl 	= nh.subscribe("/usb_controller_r_signal", 	1,		&PlannerX::callbackGetOutsideControl, 	this);
 	else
 		m_bOutsideControl = 1;
 
-	sub_AStarPath 		= nh.subscribe("/astar_path", 				10,		&PlannerX::callbackGetAStarPath, 		this);
+	sub_AStarPath 		= nh.subscribe("/astar_path", 				1,		&PlannerX::callbackGetAStarPath, 		this);
 	sub_WayPlannerPaths = nh.subscribe("/lane_waypoints_array", 	1,		&PlannerX::callbackGetWayPlannerPath, 	this);
 
 	if(m_MapSource == MAP_AUTOWARE)
@@ -210,7 +213,7 @@ PlannerX::~PlannerX()
 {
 #ifdef OPENPLANNER_ENABLE_LOGS
 	UtilityHNS::DataRW::WriteLogData(UtilityHNS::UtilityH::GetHomeDirectory()+UtilityHNS::DataRW::LoggingMainfolderName+UtilityHNS::DataRW::StatesLogFolderName, "MainLog",
-			"time,dt,Behavior State,behavior,num_Tracked_Objects,num_Cluster_Points,num_Contour_Points,t_Tracking,t_Calc_Cost, t_Behavior_Gen, t_Roll_Out_Gen, num_RollOuts, Full_Block, idx_Central_traj, iTrajectory, Stop Sign, Traffic Light, Min_Stop_Distance, follow_distance, follow_velocity, Velocity, Steering, X, Y, Z, heading,"
+			"time,dt,Behavior State,behavior,num_Tracked_Objects,num_Cluster_Points,num_Contour_Points,t_Tracking,t_Calc_Cost, t_Behavior_Gen, t_Roll_Out_Gen, t_LocalPlanner, t_visualize_log, num_RollOuts, Full_Block, idx_Central_traj, iTrajectory, Stop Sign, Traffic Light, Min_Stop_Distance, follow_distance, follow_velocity, Velocity, Steering, X, Y, Z, heading,"
 			, m_LogData);
 #endif
 
@@ -447,6 +450,7 @@ void PlannerX::UpdatePlanningParams()
 	vehicleInfo.max_speed_forward = params.maxSpeed;
 	vehicleInfo.min_speed_forward = params.minSpeed;
 
+	m_LocalPlannerParams = params;
 	m_LocalPlanner.m_SimulationSteeringDelayFactor = controlParams.SimulationSteeringDelay;
 	m_LocalPlanner.Init(controlParams, params, vehicleInfo);
 	m_LocalPlanner.m_pCurrentBehaviorState->m_Behavior = PlannerHNS::INITIAL_STATE;
@@ -464,6 +468,17 @@ void PlannerX::callbackGetInitPose(const geometry_msgs::PoseWithCovarianceStampe
 				tf::getYaw(msg->pose.pose.orientation));
 		m_CurrentPos = m_InitPos;
 		bInitPos = true;
+
+		cout << endl;
+
+		/**
+		 * Testing Code
+		 */
+		//		int iSlow = PlannerHNS::PlanningHelpers::GetClosestNextPointIndex(m_LocalPlanner.m_TotalPath.at(0), m_CurrentPos);
+		//		int iFast = PlannerHNS::PlanningHelpers::GetClosestNextPointIndexFast(m_LocalPlanner.m_TotalPath.at(0), m_CurrentPos);
+		//
+		//		if(iSlow != iFast)
+		//			cout << " Whyyy !!!! (" << iSlow << ", " << iFast << ") .. " << endl;
 	}
 }
 
@@ -523,42 +538,45 @@ void PlannerX::callbackGetRvizPoint(const geometry_msgs::PointStampedConstPtr& m
 		pub_TrackedObstaclesRviz.publish(boxes_array);
 	}
 
-//	if(m_LocalPlanner.m_TotalPath.size() > 0)
-//	{
-//		vector<PlannerHNS::WayPoint> line;
-//		PlannerHNS::WayPoint p1(msg->point.x+m_OriginPos.position.x, msg->point.y+m_OriginPos.position.y, msg->point.z+m_OriginPos.position.z, 0);
-//
-//		//int index = PlannerHNS::PlanningHelpers::GetClosestNextPointIndex(m_LocalPlanner.m_TotalPath.at(0), p1);
-////		PlannerHNS::WayPoint p_prev = m_LocalPlanner.m_TotalPath.at(0).at(index);
-////		if(index > 0)
-////			p_prev = m_LocalPlanner.m_TotalPath.at(0).at(index-1);
-////
-////
-////		double distance = 0;
-////		PlannerHNS::WayPoint p2 = PlannerHNS::PlanningHelpers::GetPerpendicularOnTrajectory(m_LocalPlanner.m_TotalPath.at(0), p1, distance);
-////
-////		double perpDistance = PlannerHNS::PlanningHelpers::GetPerpDistanceToTrajectorySimple(m_LocalPlanner.m_TotalPath.at(0), p1);
-////
-////		double back_distance = hypot(p2.pos.y - p_prev.pos.y, p2.pos.x - p_prev.pos.x);
-////		double direct_distance = hypot(p2.pos.y - p1.pos.y, p2.pos.x - p1.pos.x);
-//
-//
-//		PlannerHNS::RelativeInfo info;
-//		bool ret = PlannerHNS::PlanningHelpers::GetRelativeInfo(m_LocalPlanner.m_TotalPath.at(0), p1, info);
-//		PlannerHNS::WayPoint p_prev = m_LocalPlanner.m_TotalPath.at(0).at(info.iBack);
-//
-//		std::cout << "Perp D: " << info.perp_distance << ", F D: "<< info.to_front_distance << ", B D: " << info.from_back_distance << ", F Index: "<< info.iFront << ", B Index: " << info.iBack << ", Size: "<< m_LocalPlanner.m_TotalPath.at(0).size() << std::endl;
-//
-//		line.push_back(p1);
-//		line.push_back(info.perp_point);
-//		line.push_back(p_prev);
-//
-//		std::vector<std::vector<PlannerHNS::WayPoint> > lines;
-//		lines.push_back(line);
-//		visualization_msgs::MarkerArray line_vis;
-//		RosHelpers::ConvertFromPlannerHToAutowareVisualizePathFormat(lines, line_vis);
-//		pub_TestLineRviz.publish(line_vis);
-//	}
+	/**
+	 * Testing Code
+	 */
+	//	if(m_LocalPlanner.m_TotalPath.size() > 0)
+	//	{
+	//		vector<PlannerHNS::WayPoint> line;
+	//		PlannerHNS::WayPoint p1(msg->point.x+m_OriginPos.position.x, msg->point.y+m_OriginPos.position.y, msg->point.z+m_OriginPos.position.z, 0);
+	//
+	//		//int index = PlannerHNS::PlanningHelpers::GetClosestNextPointIndex(m_LocalPlanner.m_TotalPath.at(0), p1);
+	////		PlannerHNS::WayPoint p_prev = m_LocalPlanner.m_TotalPath.at(0).at(index);
+	////		if(index > 0)
+	////			p_prev = m_LocalPlanner.m_TotalPath.at(0).at(index-1);
+	////
+	////
+	////		double distance = 0;
+	////		PlannerHNS::WayPoint p2 = PlannerHNS::PlanningHelpers::GetPerpendicularOnTrajectory(m_LocalPlanner.m_TotalPath.at(0), p1, distance);
+	////
+	////		double perpDistance = PlannerHNS::PlanningHelpers::GetPerpDistanceToTrajectorySimple(m_LocalPlanner.m_TotalPath.at(0), p1);
+	////
+	////		double back_distance = hypot(p2.pos.y - p_prev.pos.y, p2.pos.x - p_prev.pos.x);
+	////		double direct_distance = hypot(p2.pos.y - p1.pos.y, p2.pos.x - p1.pos.x);
+	//
+	//
+	//		PlannerHNS::RelativeInfo info;
+	//		bool ret = PlannerHNS::PlanningHelpers::GetRelativeInfo(m_LocalPlanner.m_TotalPath.at(0), p1, info);
+	//		PlannerHNS::WayPoint p_prev = m_LocalPlanner.m_TotalPath.at(0).at(info.iBack);
+	//
+	//		std::cout << "Perp D: " << info.perp_distance << ", F D: "<< info.to_front_distance << ", B D: " << info.from_back_distance << ", F Index: "<< info.iFront << ", B Index: " << info.iBack << ", Size: "<< m_LocalPlanner.m_TotalPath.at(0).size() << std::endl;
+	//
+	//		line.push_back(p1);
+	//		line.push_back(info.perp_point);
+	//		line.push_back(p_prev);
+	//
+	//		std::vector<std::vector<PlannerHNS::WayPoint> > lines;
+	//		lines.push_back(line);
+	//		visualization_msgs::MarkerArray line_vis;
+	//		RosHelpers::ConvertFromPlannerHToAutowareVisualizePathFormat(lines, line_vis);
+	//		pub_TestLineRviz.publish(line_vis);
+	//	}
 }
 
 void PlannerX::callbackGetCurrentPose(const geometry_msgs::PoseStampedConstPtr& msg)
@@ -832,7 +850,7 @@ void PlannerX::callbackGetWayPlannerPath(const autoware_msgs::LaneArrayConstPtr&
 	{
 		curr_lanes.clear();
 		m_WayPlannerPaths.clear();
-		bool bOldGlobalPath = m_LocalPlanner.m_TotalPath.size() == msg->lanes.size();
+		bool bOldGlobalPath = m_LocalPlanner.m_TotalOriginalPath.size() == msg->lanes.size();
 		for(unsigned int i = 0 ; i < msg->lanes.size(); i++)
 		{
 			std::vector<PlannerHNS::WayPoint> path;
@@ -925,7 +943,7 @@ void PlannerX::callbackGetWayPlannerPath(const autoware_msgs::LaneArrayConstPtr&
 
 			if(bOldGlobalPath)
 			{
-				bOldGlobalPath = PlannerHNS::PlanningHelpers::CompareTrajectories(path, m_LocalPlanner.m_TotalPath.at(i));
+				bOldGlobalPath = PlannerHNS::PlanningHelpers::CompareTrajectories(path, m_LocalPlanner.m_TotalOriginalPath.at(i));
 			}
 		}
 
@@ -935,19 +953,23 @@ void PlannerX::callbackGetWayPlannerPath(const autoware_msgs::LaneArrayConstPtr&
 			bWayPlannerPath = true;
 			m_LocalPlanner.m_pCurrentBehaviorState->GetCalcParams()->bNewGlobalPath = true;
 			//m_CurrentGoal = m_WayPlannerPaths.at(0).at(m_WayPlannerPaths.at(0).size()-1);
-			m_LocalPlanner.m_TotalPath = m_WayPlannerPaths;
+			m_LocalPlanner.m_TotalOriginalPath = m_WayPlannerPaths;
 			cout << "Global Lanes Size = " << msg->lanes.size() <<", Conv Size= " << m_WayPlannerPaths.size() << ", First Lane Size: " << m_WayPlannerPaths.at(0).size() << endl;
 			cout << "Number of Current Lanes : " << curr_lanes.size() << endl ;
 
+			/**
+			 * Load Curbs once when new global path received
+
 			if(m_bEnableCurbObstacles)
 			{
-				if(m_LocalPlanner.m_TotalPath.size()>0)
+				if(m_LocalPlanner.m_TotalOriginalPath.size()>0)
 				{
 					curr_curbs_obstacles.clear();
 					GenerateCurbsObstacles(curr_curbs_obstacles);
 				}
 				cout << "Numbe of Curbs Objects: " << curr_curbs_obstacles.size() << endl;
 			}
+			*/
 
 //			for(unsigned int k= 0; k < m_WayPlannerPaths.at(0).size(); k++)
 //			{
@@ -963,9 +985,12 @@ void PlannerX::callbackGetWayPlannerPath(const autoware_msgs::LaneArrayConstPtr&
 void PlannerX::GenerateCurbsObstacles(std::vector<PlannerHNS::DetectedObject>& curb_obstacles)
 {
 
+	if(m_LocalPlanner.m_TotalPath.size() == 0) return;
+
 	PlannerHNS::RelativeInfo car_info;
 	PlannerHNS::PlanningHelpers::GetRelativeInfo(m_LocalPlanner.m_TotalPath.at(0), m_LocalPlanner.state, car_info);
 
+	cout << endl;
 	for(unsigned int ic = 0; ic < m_Map.curbs.size(); ic++)
 	{
 
@@ -986,10 +1011,10 @@ void PlannerX::GenerateCurbsObstacles(std::vector<PlannerHNS::DetectedObject>& c
 			double longitudinalDist = PlannerHNS::PlanningHelpers::GetExactDistanceOnTrajectory(m_LocalPlanner.m_TotalPath.at(0), car_info, obj_info);
 
 
-			//cout << "Curb Proximity = " << obj_info.perp_distance << ", Distance On Path = " << longitudinalDist << endl;
-
-			if(fabs(obj_info.perp_distance) > 2.5 || longitudinalDist < 0 || longitudinalDist > 50)
+			if(fabs(obj_info.perp_distance) > 2.5 || longitudinalDist < m_LocalPlanner.m_CarInfo.length/2.0 || longitudinalDist > m_LocalPlannerParams.horizonDistance)
 				continue;
+
+			//cout << "Curb Proximity = " << obj_info.perp_distance << ", Distance On Path = " << longitudinalDist << ", Info : "<< car_info.iBack << "," << obj_info.iFront <<  endl;
 
 			obj.id = -1;
 			obj.t  = PlannerHNS::SIDEWALK;
@@ -1011,9 +1036,13 @@ void PlannerX::LogLocalPlanningInfo(double dt)
 		UtilityHNS::UtilityH::GetTickCount(log_t);
 		std::ostringstream dataLine;
 		std::ostringstream dataLineToOut;
+		double nContourPoints = 0;
+		for(unsigned int i = 0 ; i < m_AllObstacles.size(); i++)
+			nContourPoints += m_AllObstacles.at(i).contour.size();
+
 		dataLine << UtilityHNS::UtilityH::GetLongTime(log_t) <<"," << dt << "," << m_CurrentBehavior.state << ","<< RosHelpers::GetBehaviorNameFromCode(m_CurrentBehavior.state) << "," <<
-				m_nTrackObjects << "," << m_nOriginalPoints << "," << m_nContourPoints << "," << m_TrackingTime << "," <<
-				m_LocalPlanner.m_CostCalculationTime << "," << m_LocalPlanner.m_BehaviorGenTime << "," << m_LocalPlanner.m_RollOutsGenerationTime << "," <<
+				m_AllObstacles.size() << "," << m_nOriginalPoints << "," << nContourPoints << "," << m_TrackingTime << "," <<
+				m_LocalPlanner.m_CostCalculationTime << "," << m_LocalPlanner.m_BehaviorGenTime << "," << m_LocalPlanner.m_RollOutsGenerationTime << "," << m_TotalPlanningTime << "," << m_LogAndVisualizeTime << "," <<
 				m_LocalPlanner.m_pCurrentBehaviorState->m_pParams->rollOutNumber << "," <<
 				m_LocalPlanner.m_pCurrentBehaviorState->GetCalcParams()->bFullyBlock << "," <<
 				m_LocalPlanner.m_pCurrentBehaviorState->GetCalcParams()->iCentralTrajectory << "," <<
@@ -1029,15 +1058,18 @@ void PlannerX::LogLocalPlanningInfo(double dt)
 		m_LogData.push_back(dataLine.str());
 	}
 
-	if(m_CurrentBehavior.bNewPlan)
-	{
-		std::ostringstream str_out;
-		str_out << UtilityHNS::UtilityH::GetHomeDirectory();
-		str_out << UtilityHNS::DataRW::LoggingMainfolderName;
-		str_out << UtilityHNS::DataRW::PathLogFolderName;
-		str_out << "LocalPath_";
-		PlannerHNS::PlanningHelpers::WritePathToFile(str_out.str(), m_LocalPlanner.m_OriginalLocalPath);
-	}
+	/**
+	 * Local Trajectory Logging , Disable for performance issues
+	 */
+	//	if(m_CurrentBehavior.bNewPlan)
+	//	{
+	//		std::ostringstream str_out;
+	//		str_out << UtilityHNS::UtilityH::GetHomeDirectory();
+	//		str_out << UtilityHNS::DataRW::LoggingMainfolderName;
+	//		str_out << UtilityHNS::DataRW::PathLogFolderName;
+	//		str_out << "LocalPath_";
+	//		PlannerHNS::PlanningHelpers::WritePathToFile(str_out.str(), m_LocalPlanner.m_OriginalLocalPath);
+	//	}
 }
 
 void PlannerX::VisualizeLocalPlanner()
@@ -1072,6 +1104,10 @@ void PlannerX::VisualizeLocalPlanner()
 	RosHelpers::ConvertFromPlannerHToAutowareVisualizePathFormat(m_LocalPlanner.m_Path, m_LocalPlanner.m_RollOuts, m_LocalPlanner, m_AllRollouts);
 	pub_LocalTrajectoriesRviz.publish(m_AllRollouts);
 
+
+	/**
+	 * Particle Filter Visualization
+	 */
 	//		std::vector<std::vector<PlannerHNS::WayPoint> > all_pred_paths;
 	//		std::vector<PlannerHNS::WayPoint> particles_points;
 	//		for(unsigned int i=0; i< m_ParticlePred.m_ParticleInfo.size(); i++)
@@ -1164,7 +1200,6 @@ void PlannerX::PlannerMainLoop()
 		{
 			bKmlMapLoaded = true;
 			PlannerHNS::MappingHelpers::LoadKML(m_KmlMapPath, m_Map);
-			//sub_WayPlannerPaths = nh.subscribe("/lane_waypoints_array", 	10,		&PlannerX::callbackGetWayPlannerPath, 	this);
 		}
 		else if(m_MapSource == MAP_FOLDER && !bKmlMapLoaded)
 		{
@@ -1180,16 +1215,14 @@ void PlannerX::PlannerMainLoop()
 				 m_AwMap.bDtLanes = m_AwMap.bLanes = m_AwMap.bPoints = false;
 				 RosHelpers::UpdateRoadMap(m_AwMap,m_Map);
 				 std::cout << "Converting Vector Map Time : " <<UtilityHNS::UtilityH::GetTimeDiffNow(timerTemp) << std::endl;
-				 //sub_WayPlannerPaths = nh.subscribe("/lane_waypoints_array", 	10,		&PlannerX::callbackGetWayPlannerPath, 	this);
 			 }
 		}
 
-		if(bInitPos && m_LocalPlanner.m_TotalPath.size()>0)
+		if(bInitPos && m_LocalPlanner.m_TotalOriginalPath.size()>0)
 		{
+			PlannerHNS::PlanningHelpers::m_TestingClosestPoint.clear();
 			m_LocalPlanner.m_pCurrentBehaviorState->GetCalcParams()->bOutsideControl = m_bOutsideControl;
 			m_LocalPlanner.state = m_CurrentPos;
-
-
 
 			m_AllObstacles.clear();
 			if(m_bEnableCurbObstacles)
@@ -1213,25 +1246,60 @@ void PlannerX::PlannerMainLoop()
 					m_PrevTrafficLight.at(itls).lightState = m_CurrLightStatus;
 			}
 
+			timespec t;
+			UtilityHNS::UtilityH::GetTickCount(t);
 
+			/**
+			 * Testing Particle Filter Behavior Prediction Method
+			 */
+			/*
+			 timespec prediction_time;
+			 UtilityHNS::UtilityH::GetTickCount(prediction_time);
+			 m_ParticlePred.DoOneStep(allObstacles, m_Map);
+			 double pred_time = UtilityHNS::UtilityH::GetTimeDiffNow(prediction_time);
+			 cout << "Detected Particles : " << m_ParticlePred.m_ParticleInfo.size() << ", Time:" << pred_time << endl;
+			*/
 
-//			timespec prediction_time;
-//			UtilityHNS::UtilityH::GetTickCount(prediction_time);
-//			m_ParticlePred.DoOneStep(allObstacles, m_Map);
-//			double pred_time = UtilityHNS::UtilityH::GetTimeDiffNow(prediction_time);
-//			cout << "Detected Particles : " << m_ParticlePred.m_ParticleInfo.size() << ", Time:" << pred_time << endl;
+			PlannerHNS::PlanningHelpers::m_TestingClosestPoint.clear();
 
 			m_CurrentBehavior = m_LocalPlanner.DoOneStep(dt, m_VehicleState, m_AllObstacles, 1, m_Map, m_bEmergencyStop, m_PrevTrafficLight, true);
 
+			m_TotalPlanningTime = UtilityHNS::UtilityH::GetTimeDiffNow(t);
+
+			m_AllConnectedLines.markers.clear();
+			for(unsigned int i=0; i < PlannerHNS::PlanningHelpers::m_TestingClosestPoint.size(); i++)
+			{
+				visualization_msgs::Marker poly_mkr = RosHelpers::CreateGenMarker(0,0,0,0, 0,0,1,0.1, i,"PointsRelations", visualization_msgs::Marker::LINE_STRIP);
+
+				geometry_msgs::Point point1,point2;
+				point1.x = PlannerHNS::PlanningHelpers::m_TestingClosestPoint.at(i).first.x;
+				point1.y = PlannerHNS::PlanningHelpers::m_TestingClosestPoint.at(i).first.y;
+				point1.z = PlannerHNS::PlanningHelpers::m_TestingClosestPoint.at(i).first.z;
+
+				point2.x = PlannerHNS::PlanningHelpers::m_TestingClosestPoint.at(i).second.x;
+				point2.y = PlannerHNS::PlanningHelpers::m_TestingClosestPoint.at(i).second.y;
+				point2.z = PlannerHNS::PlanningHelpers::m_TestingClosestPoint.at(i).second.z;
+
+				poly_mkr.points.push_back(point1);
+				poly_mkr.points.push_back(point2);
+
+				m_AllConnectedLines.markers.push_back(poly_mkr);
+			}
+
+			pub_ConnectedPointsRviz.publish(m_AllConnectedLines);
+			PlannerHNS::PlanningHelpers::m_TestingClosestPoint.clear();
 		}
 		else
 		{
 			sub_WayPlannerPaths = nh.subscribe("/lane_waypoints_array", 	1,		&PlannerX::callbackGetWayPlannerPath, 	this);
 		}
 
+		timespec t;
+		UtilityHNS::UtilityH::GetTickCount(t);
 		SendLocalPlanningTopics();
 		VisualizeLocalPlanner();
 		LogLocalPlanningInfo(dt);
+		m_LogAndVisualizeTime = UtilityHNS::UtilityH::GetTimeDiffNow(t);
 
 		loop_rate.sleep();
 	}

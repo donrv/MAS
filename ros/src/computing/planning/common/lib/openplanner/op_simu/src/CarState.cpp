@@ -367,7 +367,7 @@ double CarState::PredictTimeCostForTrajectory(std::vector<PlannerHNS::WayPoint>&
 		path.at(i).timeCost = -1;
 	}
 
-	int startIndex = PlanningHelpers::GetClosestNextPointIndex(path, state);
+	int startIndex = PlanningHelpers::GetClosestNextPointIndexFast(path, state);
 	double total_distance = 0;
 	path.at(startIndex).timeCost = 0;
 	for(unsigned int i=startIndex+1; i<path.size(); i++)
@@ -737,7 +737,7 @@ void CarState::FindNextBestSafeTrajectory(int& safe_index)
 	bool bNewTrajectory = false;
 //	if(m_TotalPath.size()>0)
 //	{
-//		int currIndex = PlannerHNS::PlanningHelpers::GetClosestNextPointIndex(m_Path, state);
+//		int currIndex = PlannerHNS::PlanningHelpers::GetClosestNextPointIndexFast(m_Path, state);
 //		int index_limit = 0;//m_Path.size() - 20;
 //		if(index_limit<=0)
 //			index_limit =  m_Path.size()/2.0;
@@ -1043,7 +1043,7 @@ bool SimulatedCarState::SelectSafeTrajectoryAndSpeedProfile(const PlannerHNS::Ve
 	PlannerHNS::PlanningParams planningDefaultParams;
 	planningDefaultParams.rollOutNumber = 0;
 
-	int currIndex = PlannerHNS::PlanningHelpers::GetClosestNextPointIndex(m_Path, state);
+	int currIndex = PlannerHNS::PlanningHelpers::GetClosestNextPointIndexFast(m_Path, state);
 	int index_limit = 0;//m_Path.size() - 15;
 	if(index_limit<=0)
 		index_limit =  m_Path.size()/2.0;

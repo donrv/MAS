@@ -68,8 +68,8 @@ void SimpleTracker::InitializeInterestRegions(double horizon, double init_raduis
 		{
 			pCir->radius = 5;
 			//pCir->pPrevCircle = 0;
-			//pCir->forget_time = NEVER_GORGET_TIME;
-			//pCir->forget_time = m_MaxKeepTime*2.0;
+			pCir->forget_time = NEVER_GORGET_TIME;
+			pCir->forget_time = m_MaxKeepTime*2.0;
 			pCir->forget_time = m_MaxKeepTime;
 			regions.push_back(pCir);
 			std::cout << "Region No: " << regions.size() << ", Radius: " << pCir->radius << ", F time: " << pCir->forget_time << std::endl;
@@ -84,10 +84,10 @@ void SimpleTracker::InitializeInterestRegions(double horizon, double init_raduis
 
 //			regions.at(iPrev)->pNextCircle = pCir;
 //			pCir->pPrevCircle = regions.at(iPrev);
-			//pCir->forget_time = m_MaxKeepTime-iPrev-2;
+			pCir->forget_time = m_MaxKeepTime-iPrev-2;
 			pCir->forget_time = m_MaxKeepTime;
-//			if(pCir->forget_time <= 0 )
-//				pCir->forget_time = 0.2;
+			if(pCir->forget_time <= 0 )
+				pCir->forget_time = 0.2;
 			regions.push_back(pCir);
 
 			std::cout << "Region No: " << regions.size() << ", Radius: " << pCir->radius << ", F time: " << pCir->forget_time << std::endl;
@@ -278,7 +278,7 @@ void SimpleTracker::TrackV2()
 void SimpleTracker::CleanOldTracks()
 {
 	m_DetectedObjects.clear();
-	for(int i = 0; i< m_Tracks.size(); i++)
+	for(int i = 0; i< (int)m_Tracks.size(); i++)
 	{
 		if(m_Tracks.at(i)->forget_time < 0 && m_Tracks.at(i)->forget_time > NEVER_GORGET_TIME)
 		{
@@ -303,26 +303,20 @@ void SimpleTracker::DoOneStep(const WayPoint& currPose, const std::vector<Detect
 	UtilityHNS::UtilityH::GetTickCount(m_TrackTimer);
 
 	//std::cout << " Tracking Time : " << m_DT << std::endl;
-
 	m_DetectedObjects = obj_list;
 
-	//AssociateAndTrack();
 	AssociateSimply();
 
-	//TrackV2();
-
+//	AssociateAndTrack();
+//	TrackV2();
 //	CleanOldTracks();
 
 
 
 //	AssociateObjects();
-//
 //	Track(m_DetectedObjects);
-//
 //	m_PrevDetectedObjects = m_DetectedObjects;
-//
 //	m_PrevState = currPose;
-
 }
 
 void SimpleTracker::AssociateObjects()

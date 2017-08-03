@@ -12,9 +12,9 @@ namespace PlannerXNS
 {
 
 
-PolygonGenerator::PolygonGenerator() {
-	// TODO Auto-generated constructor stub
-
+PolygonGenerator::PolygonGenerator()
+{
+	m_Quarters = CreateQuarterViews(QUARTERS_NUMBER);
 }
 
 PolygonGenerator::~PolygonGenerator() {
@@ -39,12 +39,12 @@ GPSPoint PolygonGenerator::CalculateCentroid(const pcl::PointCloud<pcl::PointXYZ
 
 std::vector<GPSPoint> PolygonGenerator::EstimateClusterPolygon(const pcl::PointCloud<pcl::PointXYZ>& cluster, const GPSPoint& original_centroid )
 {
-	std::vector<QuarterView> quarters = CreateQuarterViews(QUARTERS_NUMBER);
+	for(unsigned int i=0; i < m_Quarters.size(); i++)
+		m_Quarters.at(i).ResetQuarterView();
 
-
+	WayPoint p;
 	for(unsigned int i=0; i< cluster.points.size(); i++)
 	{
-		WayPoint p;
 		p.pos.x = cluster.points.at(i).x;
 		p.pos.y = cluster.points.at(i).y;
 		p.pos.z = original_centroid.z;
@@ -53,51 +53,46 @@ std::vector<GPSPoint> PolygonGenerator::EstimateClusterPolygon(const pcl::PointC
 		p.cost = pointNorm(v);
 		p.pos.a = UtilityHNS::UtilityH::FixNegativeAngle(atan2(v.y, v.x))*RAD2DEG;
 
-		for(unsigned int j = 0 ; j < quarters.size(); j++)
+		for(unsigned int j = 0 ; j < m_Quarters.size(); j++)
 		{
-			if(quarters.at(j).UpdateQuarterView(p))
+			if(m_Quarters.at(j).UpdateQuarterView(p))
 				break;
 		}
 	}
 
-	std::vector<GPSPoint> polygon;
-
-	for(unsigned int j = 0 ; j < quarters.size(); j++)
+	m_Polygon.clear();
+	WayPoint wp;
+	for(unsigned int j = 0 ; j < m_Quarters.size(); j++)
 	{
-
-		WayPoint wp;
-		int nPoints = quarters.at(j).GetMaxPoint(wp);
-		if(nPoints >= MIN_POINTS_PER_QUARTER)
-		{
-			polygon.push_back(wp.pos);
-		}
+		if(m_Quarters.at(j).GetMaxPoint(wp))
+			m_Polygon.push_back(wp.pos);
 	}
 
 //	//Fix Resolution:
-//	bool bChange = true;
-//	while (bChange && polygon.size()>1)
-//	{
-//		bChange = false;
-//		GPSPoint p1 =  polygon.at(polygon.size()-1);
-//		for(unsigned int i=0; i< polygon.size(); i++)
-//		{
-//			GPSPoint p2 = polygon.at(i);
-//			double d = hypot(p2.y- p1.y, p2.x - p1.x);
-//			if(d > MIN_DISTANCE_BETWEEN_CORNERS)
-//			{
-//				GPSPoint center_p = p1;
-//				center_p.x = (p2.x + p1.x)/2.0;
-//				center_p.y = (p2.y + p1.y)/2.0;
-//				polygon.insert(polygon.begin()+i, center_p);
-//				bChange = true;
-//				break;
-//			}
-//
-//			p1 = p2;
-//		}
-//	}
+	bool bChange = true;
+	while (bChange && m_Polygon.size()>1)
+	{
+		bChange = false;
+		GPSPoint p1 =  m_Polygon.at(m_Polygon.size()-1);
+		for(unsigned int i=0; i< m_Polygon.size(); i++)
+		{
+			GPSPoint p2 = m_Polygon.at(i);
+			double d = hypot(p2.y- p1.y, p2.x - p1.x);
+			if(d > MIN_DISTANCE_BETWEEN_CORNERS)
+			{
+				GPSPoint center_p = p1;
+				center_p.x = (p2.x + p1.x)/2.0;
+				center_p.y = (p2.y + p1.y)/2.0;
+				m_Polygon.insert(m_Polygon.begin()+i, center_p);
+				bChange = true;
+				break;
+			}
 
-	return polygon;
+			p1 = p2;
+		}
+	}
+
+	return m_Polygon;
 
 }
 

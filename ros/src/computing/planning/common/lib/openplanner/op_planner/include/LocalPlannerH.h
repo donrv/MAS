@@ -27,6 +27,7 @@ public:
 	std::vector<WayPoint> m_Path;
 	std::vector<WayPoint> m_OriginalLocalPath;
 	std::vector<std::vector<WayPoint> > m_TotalPath;
+	std::vector<std::vector<WayPoint> > m_TotalOriginalPath;
 	int m_iCurrentTotalPathId;
 	int m_iSafeTrajectory;
 //	int m_iGlobalPathPrevID;
@@ -148,6 +149,8 @@ private:
 	void TransformPoint(const WayPoint& refPose, GPSPoint& p);
 	void AddAndTransformContourPoints(const DetectedObject& obj, std::vector<WayPoint>& contourPoints);
 	double UpdateVelocityDirectlyToTrajectory(const BehaviorState& beh, const VehicleState& CurrStatus, const double& dt);
+
+	void ExtractHorizonAndCalculateRecommendedSpeed();
 
 	bool NoWayTest(const double& min_distance, const int& iGlobalPathIndex);
 

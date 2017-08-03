@@ -23,7 +23,6 @@
 using namespace UtilityHNS;
 using namespace std;
 #define _FIND_LEFT_RIGHT_LANES
-#define _SMOOTH_MAP_WAYPOINTS
 #define RIGHT_INITIAL_TURNS_COST 0
 #define LEFT_INITIAL_TURNS_COST 0
 
@@ -185,10 +184,6 @@ void MappingHelpers::ConstructRoadNetworkFromRosMessage(const std::vector<Utilit
 			if(laneIDSeq != 0) //first lane
 			{
 				lane_obj.toIds.push_back(prev_lane_point.FLID);
-#ifdef SMOOTH_MAP_WAYPOINTS
-				PlanningHelpers::SmoothPath(lane_obj.points, 0.49, 0.15 , 0.01);
-				PlanningHelpers::CalcAngleAndCost(lane_obj.points);
-#endif
 				roadLanes.push_back(lane_obj);
 //				if(lane_obj.points.size() <= 1)
 //					prev_FLID = 0;
@@ -205,7 +200,6 @@ void MappingHelpers::ConstructRoadNetworkFromRosMessage(const std::vector<Utilit
 		WayPoint wp;
 		bool bFound = GetWayPoint(curr_lane_point.LnID, lane_obj.id, curr_lane_point.RefVel,curr_lane_point.DID,
 				dt_data, points_data,origin, wp);
-
 
 		if(curr_lane_point.LaneDir == 'L')
 		{
@@ -611,11 +605,11 @@ bool MappingHelpers::GetWayPoint(const int& id, const int& laneID,const double& 
 
 					wp.pos = GPSPoint(points.at(p).Ly + origin.x, points.at(p).Bx + origin.y, points.at(p).H + origin.z, dtpoints.at(dtp).Dir);
 
-
 					wp.pos.lat = points.at(p).L;
 					wp.pos.lon = points.at(p).B;
 					wp.pos.alt = points.at(p).H;
 					wp.pos.dir = dtpoints.at(dtp).Dir;
+					wp.iOriginalIndex = p;
 
 
 					way_point = wp;
@@ -670,9 +664,6 @@ void MappingHelpers::LoadKML(const std::string& kmlFile, RoadNetwork& map)
 		{
 			//if(laneLinksList.at(j).roadId == roadLinksList.at(i).id)
 			{
-#ifdef SMOOTH_MAP_WAYPOINTS
-				PlanningHelpers::SmoothPath(laneLinksList.at(j).points, 0.49, 0.15 , 0.01);
-#endif
 				PlanningHelpers::CalcAngleAndCost(laneLinksList.at(j).points);
 				roadLinksList.at(i).Lanes.push_back(laneLinksList.at(j));
 			}
@@ -777,7 +768,7 @@ void MappingHelpers::LoadKML(const std::string& kmlFile, RoadNetwork& map)
 					map.stopLines.at(isl).pLane = &map.roadSegments.at(rs).Lanes.at(i);
 					map.roadSegments.at(rs).Lanes.at(i).stopLines.push_back(map.stopLines.at(isl));
 					WayPoint wp((map.stopLines.at(isl).points.at(0).x+map.stopLines.at(isl).points.at(1).x)/2.0, (map.stopLines.at(isl).points.at(0).y+map.stopLines.at(isl).points.at(1).y)/2.0, (map.stopLines.at(isl).points.at(0).z+map.stopLines.at(isl).points.at(1).z)/2.0, (map.stopLines.at(isl).points.at(0).a+map.stopLines.at(isl).points.at(1).a)/2.0);
-					map.roadSegments.at(rs).Lanes.at(i).points.at(PlanningHelpers::GetClosestNextPointIndex(map.roadSegments.at(rs).Lanes.at(i).points, wp)).stopLineID = map.stopLines.at(isl).id;
+					map.roadSegments.at(rs).Lanes.at(i).points.at(PlanningHelpers::GetClosestNextPointIndexFast(map.roadSegments.at(rs).Lanes.at(i).points, wp)).stopLineID = map.stopLines.at(isl).id;
 				}
 			}
 		}
@@ -833,7 +824,7 @@ WayPoint* MappingHelpers::GetClosestWaypointFromMap(const WayPoint& pos, RoadNet
 
 	if(!pLane) return 0;
 
-	int closest_index = PlanningHelpers::GetClosestNextPointIndex(pLane->points, pos);
+	int closest_index = PlanningHelpers::GetClosestNextPointIndexFast(pLane->points, pos);
 
 	return &pLane->points.at(closest_index);
 }
@@ -850,7 +841,7 @@ WayPoint* MappingHelpers::GetClosestBackWaypointFromMap(const WayPoint& pos, Roa
 
 	if(!pLane) return 0;
 
-	int closest_index = PlanningHelpers::GetClosestNextPointIndex(pLane->points, pos);
+	int closest_index = PlanningHelpers::GetClosestNextPointIndexFast(pLane->points, pos);
 
 	if(closest_index>2)
 		return &pLane->points.at(closest_index-3);
@@ -1162,7 +1153,7 @@ Lane* MappingHelpers::GetLaneFromPath(const WayPoint& currPos, const std::vector
 {
 	if(currPath.size() < 1) return 0;
 
-	int closest_index = PlanningHelpers::GetClosestNextPointIndex(currPath, currPos);
+	int closest_index = PlanningHelpers::GetClosestNextPointIndexFast(currPath, currPos);
 
 	return currPath.at(closest_index).pLane;
 }
@@ -1601,7 +1592,7 @@ void MappingHelpers::FindAdjacentLanes(RoadNetwork& map)
 				{
 					int iCenter1 = pL->points.size()/2;
 					WayPoint wp_1 = pL->points.at(iCenter1);
-					int iCenter2 = PlanningHelpers::GetClosestNextPointIndex(map.roadSegments.at(rs_2).Lanes.at(i2).points, wp_1 );
+					int iCenter2 = PlanningHelpers::GetClosestNextPointIndexFast(map.roadSegments.at(rs_2).Lanes.at(i2).points, wp_1 );
 					WayPoint closest_p = map.roadSegments.at(rs_2).Lanes.at(i2).points.at(iCenter2);
 					double mid_a1 = wp_1.pos.a;
 					double mid_a2 = closest_p.pos.a;
@@ -1811,7 +1802,7 @@ void MappingHelpers::LinkTrafficLightsAndStopLines(RoadNetwork& map)
 							map.stopLines.at(isl).stopSignID = 100+isl;
 							map.roadSegments.at(rs).Lanes.at(i).stopLines.push_back(map.stopLines.at(isl));
 							WayPoint wp((map.stopLines.at(isl).points.at(0).x+map.stopLines.at(isl).points.at(1).x)/2.0, (map.stopLines.at(isl).points.at(0).y+map.stopLines.at(isl).points.at(1).y)/2.0, (map.stopLines.at(isl).points.at(0).z+map.stopLines.at(isl).points.at(1).z)/2.0, (map.stopLines.at(isl).points.at(0).a+map.stopLines.at(isl).points.at(1).a)/2.0);
-							map.roadSegments.at(rs).Lanes.at(i).points.at(PlanningHelpers::GetClosestNextPointIndex(map.roadSegments.at(rs).Lanes.at(i).points, wp)).stopLineID = map.stopLines.at(isl).id;
+							map.roadSegments.at(rs).Lanes.at(i).points.at(PlanningHelpers::GetClosestNextPointIndexFast(map.roadSegments.at(rs).Lanes.at(i).points, wp)).stopLineID = map.stopLines.at(isl).id;
 							break;
 						}
 					}
@@ -1855,7 +1846,7 @@ void MappingHelpers::LinkTrafficLightsAndStopLinesConData(const std::vector<Util
 								map.stopLines.at(isl).stopSignID = data_conn.SSID;
 								map.roadSegments.at(rs).Lanes.at(i).stopLines.push_back(map.stopLines.at(isl));
 								WayPoint wp((map.stopLines.at(isl).points.at(0).x+map.stopLines.at(isl).points.at(1).x)/2.0, (map.stopLines.at(isl).points.at(0).y+map.stopLines.at(isl).points.at(1).y)/2.0, (map.stopLines.at(isl).points.at(0).z+map.stopLines.at(isl).points.at(1).z)/2.0, (map.stopLines.at(isl).points.at(0).a+map.stopLines.at(isl).points.at(1).a)/2.0);
-								map.roadSegments.at(rs).Lanes.at(i).points.at(PlanningHelpers::GetClosestNextPointIndex(map.roadSegments.at(rs).Lanes.at(i).points, wp)).stopLineID = map.stopLines.at(isl).id;
+								map.roadSegments.at(rs).Lanes.at(i).points.at(PlanningHelpers::GetClosestNextPointIndexFast(map.roadSegments.at(rs).Lanes.at(i).points, wp)).stopLineID = map.stopLines.at(isl).id;
 							}
 						}
 					}

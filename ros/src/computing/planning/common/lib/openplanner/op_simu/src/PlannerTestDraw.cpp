@@ -1451,7 +1451,7 @@ void* PlannerTestDraw::PlanningThreadStaticEntryPoint(void* pThis)
 			 */
 			int currIndexToGoal = 0;
 			if(pR->m_LocalPlanner.m_TotalPath.size()>0)
-				currIndexToGoal = PlannerHNS::PlanningHelpers::GetClosestNextPointIndex(pR->m_LocalPlanner.m_TotalPath.at(0), pR->m_LocalPlanner.state);
+				currIndexToGoal = PlannerHNS::PlanningHelpers::GetClosestNextPointIndexFast(pR->m_LocalPlanner.m_TotalPath.at(0), pR->m_LocalPlanner.state);
 //			int index_limit_total = pR->m_LocalPlanner.m_TotalPath.size() - 25;
 //			if(index_limit_total<=0)
 //				index_limit_total =  pR->m_LocalPlanner.m_TotalPath.size()/2.0;

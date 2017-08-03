@@ -582,7 +582,11 @@ bool LocalPlannerH::CalculateObstacleCosts(PlannerHNS::RoadNetwork& map, const P
 	PlannerHNS::Lane* pPathLane = 0;
 	pPathLane = MappingHelpers::GetLaneFromPath(state, m_Path);
 	if(!pPathLane)
+	{
+		cout << "Performance Alert: Can't Find Lane Information in Global Path, Searching the Map :( " << endl;
 		pMapLane  = MappingHelpers::GetClosestLaneFromMap(state, map, search_distance);
+
+	}
 
 	if(pPathLane)
 		pLane = pPathLane;
@@ -625,13 +629,7 @@ bool LocalPlannerH::CalculateObstacleCosts(PlannerHNS::RoadNetwork& map, const P
 
 	if(m_TotalPath.size()>0)
 	{
-		if(m_pCurrentBehaviorState->GetCalcParams()->bNewGlobalPath)
-		{
-			m_TotalPath.at(m_iCurrentTotalPathId).at(m_TotalPath.at(m_iCurrentTotalPathId).size()-1).v = 0;
-			PlanningHelpers::GenerateRecommendedSpeed(m_TotalPath.at(m_iCurrentTotalPathId), m_CarInfo.max_speed_forward, m_pCurrentBehaviorState->m_pParams->speedProfileFactor);
-		}
-
-		int currIndex = PlannerHNS::PlanningHelpers::GetClosestNextPointIndex(m_Path, state);
+		int currIndex = PlannerHNS::PlanningHelpers::GetClosestNextPointIndexFast(m_Path, state);
 		int index_limit = 0;//m_Path.size() - 20;
 		if(index_limit<=0)
 			index_limit =  m_Path.size()/2.0;
@@ -714,8 +712,8 @@ bool LocalPlannerH::CalculateObstacleCosts(PlannerHNS::RoadNetwork& map, const P
  double LocalPlannerH::UpdateVelocityDirectlyToTrajectory(const BehaviorState& beh, const VehicleState& CurrStatus, const double& dt)
  {
 	RelativeInfo info, total_info;
-	PlanningHelpers::GetRelativeInfo(m_Path, state, info);
 	PlanningHelpers::GetRelativeInfo(m_TotalPath.at(m_iCurrentTotalPathId), state, total_info);
+	PlanningHelpers::GetRelativeInfo(m_Path, state, info);
 	double average_braking_distance = -pow(CurrStatus.speed, 2)/(m_CarInfo.max_deceleration);
 	double max_velocity	= PlannerHNS::PlanningHelpers::GetVelocityAhead(m_TotalPath.at(m_iCurrentTotalPathId), total_info, average_braking_distance);
 
@@ -810,6 +808,31 @@ bool LocalPlannerH::CalculateObstacleCosts(PlannerHNS::RoadNetwork& map, const P
 	return max_velocity;
  }
 
+ void LocalPlannerH::ExtractHorizonAndCalculateRecommendedSpeed()
+ {
+	 if(m_pCurrentBehaviorState->GetCalcParams()->bNewGlobalPath)
+		{
+			m_TotalOriginalPath.at(m_iCurrentTotalPathId).at(m_TotalOriginalPath.at(m_iCurrentTotalPathId).size()-1).v = 0;
+			PlanningHelpers::GenerateRecommendedSpeed(m_TotalOriginalPath.at(m_iCurrentTotalPathId), m_CarInfo.max_speed_forward, m_pCurrentBehaviorState->m_pParams->speedProfileFactor);
+		}
+
+		 m_TotalPath.clear();
+
+		 for(unsigned int i = 0; i < m_TotalOriginalPath.size(); i++)
+		{
+			vector<WayPoint> centerTrajectorySmoothed;
+			PlanningHelpers::ExtractPartFromPointToDistanceFast(m_TotalOriginalPath.at(i), state,
+					m_pCurrentBehaviorState->m_pParams->horizonDistance ,
+					m_pCurrentBehaviorState->m_pParams->pathDensity ,
+					centerTrajectorySmoothed,
+					m_pCurrentBehaviorState->m_pParams->smoothingDataWeight,
+					m_pCurrentBehaviorState->m_pParams->smoothingSmoothWeight,
+					m_pCurrentBehaviorState->m_pParams->smoothingToleranceError);
+
+			m_TotalPath.push_back(centerTrajectorySmoothed);
+		}
+ }
+
  PlannerHNS::BehaviorState LocalPlannerH::DoOneStep(
 		 const double& dt,
 		const PlannerHNS::VehicleState& vehicleState,
@@ -825,22 +848,23 @@ bool LocalPlannerH::CalculateObstacleCosts(PlannerHNS::RoadNetwork& map, const P
 
 	UpdateCurrentLane(map, 3.0);
 
-	timespec costTimer;
-	UtilityH::GetTickCount(costTimer);
+	ExtractHorizonAndCalculateRecommendedSpeed();
+
+	timespec t;
+	UtilityH::GetTickCount(t);
 	TrajectoryCost tc = m_TrajectoryCostsCalculatotor.DoOneStep(m_RollOuts, m_TotalPath, state,
 			m_pCurrentBehaviorState->GetCalcParams()->iCurrSafeTrajectory, m_pCurrentBehaviorState->GetCalcParams()->iCurrSafeLane, *m_pCurrentBehaviorState->m_pParams,
 			m_CarInfo,vehicleState, obj_list);
-	m_CostCalculationTime = UtilityH::GetTimeDiffNow(costTimer);
+	m_CostCalculationTime = UtilityH::GetTimeDiffNow(t);
 
 
-	timespec behTimer;
-	UtilityH::GetTickCount(behTimer);
+	UtilityH::GetTickCount(t);
 	CalculateImportantParameterForDecisionMaking(vehicleState, goalID, bEmergencyStop, trafficLight, tc);
 
 	PlannerHNS::BehaviorState beh = GenerateBehaviorState(vehicleState);
-	m_BehaviorGenTime = UtilityH::GetTimeDiffNow(behTimer);
+	m_BehaviorGenTime = UtilityH::GetTimeDiffNow(t);
 
-	timespec t;
+
 	UtilityH::GetTickCount(t);
 	beh.bNewPlan = SelectSafeTrajectoryAndSpeedProfile(vehicleState);
 	m_RollOutsGenerationTime = UtilityH::GetTimeDiffNow(t);

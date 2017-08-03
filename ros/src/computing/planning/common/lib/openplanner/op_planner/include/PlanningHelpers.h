@@ -25,7 +25,12 @@ namespace PlannerHNS {
 #define LANE_CHANGE_COST 3.0 // meters
 #define BACKUP_STRAIGHT_PLAN_DISTANCE 75 //meters
 
-class PlanningHelpers {
+class PlanningHelpers
+{
+
+public:
+	static std::vector<std::pair<GPSPoint, GPSPoint> > m_TestingClosestPoint;
+
 public:
 	PlanningHelpers();
 	virtual ~PlanningHelpers();
@@ -39,6 +44,7 @@ public:
 	 * @return true if success without errors, false otherwise
 	 */
 	static bool GetRelativeInfo(const std::vector<WayPoint>& trajectory, const WayPoint& p, RelativeInfo& info, const int& prevIndex = 0);
+
 
 	static bool GetRelativeInfoRange(const std::vector<std::vector<WayPoint> >& trajectories, const WayPoint& p, const double& searchDistance, RelativeInfo& info);
 
@@ -67,10 +73,17 @@ public:
 	 * @param prevIndex initial search index
 	 * @return index of the closest next point from trajectory
 	 */
-	static int GetClosestNextPointIndex(const std::vector<WayPoint>& trajectory, const WayPoint& p, const int& prevIndex = 0);
+	static int GetClosestNextPointIndex_obsolete(const std::vector<WayPoint>& trajectory, const WayPoint& p, const int& prevIndex = 0);
 
-	static int GetClosestNextPointIndexDirection(const std::vector<WayPoint>& trajectory, const WayPoint& p, const int& prevIndex = 0);
+	static int GetClosestNextPointIndexFast(const std::vector<WayPoint>& trajectory, const WayPoint& p, const int& prevIndex = 0);
 
+	static int GetClosestNextPointIndexFastV2(const std::vector<WayPoint>& trajectory, const WayPoint& p, const int& prevIndex = 0);
+
+	static int GetClosestNextPointIndexDirection_(const std::vector<WayPoint>& trajectory, const WayPoint& p, const int& prevIndex = 0);
+
+	static int GetClosestNextPointIndexDirectionFast(const std::vector<WayPoint>& trajectory, const WayPoint& p, const int& prevIndex = 0);
+
+	static int GetClosestNextPointIndexDirectionFastV2(const std::vector<WayPoint>& trajectory, const WayPoint& p, const int& prevIndex = 0);
 
 	static int GetClosestPointIndex_obsolete(const std::vector<WayPoint>& trajectory, const WayPoint& p,const int& prevIndex = 0 );
 	static WayPoint GetPerpendicularOnTrajectory_obsolete(const std::vector<WayPoint>& trajectory, const WayPoint& p, double& distance, const int& prevIndex = 0);
@@ -93,6 +106,9 @@ public:
 	static void ExtractPartFromPointToDistance(const std::vector<WayPoint>& originalPath, const WayPoint& pos, const double& minDistance,
 			const double& pathDensity, std::vector<WayPoint>& extractedPath, const double& SmoothDataWeight, const double& SmoothWeight, const double& SmoothTolerance);
 
+	static void ExtractPartFromPointToDistanceFast(const std::vector<WayPoint>& originalPath, const WayPoint& pos, const double& minDistance,
+				const double& pathDensity, std::vector<WayPoint>& extractedPath, const double& SmoothDataWeight, const double& SmoothWeight, const double& SmoothTolerance);
+
 	static void CalculateRollInTrajectories(const WayPoint& carPos, const double& speed, const std::vector<WayPoint>& originalCenter, int& start_index,
 			int& end_index, std::vector<double>& end_laterals ,
 			std::vector<std::vector<WayPoint> >& rollInPaths, const double& max_roll_distance,
@@ -101,7 +117,6 @@ public:
 			const int& rollOutNumber, const double& SmoothDataWeight, const double& SmoothWeight,
 			const double& SmoothTolerance, const bool& bHeadingSmooth,
 			std::vector<WayPoint>& sampledPoints);
-
 
 	static void SmoothSpeedProfiles(std::vector<WayPoint>& path_in, double weight_data, double weight_smooth, double tolerance	= 0.1);
 	static void SmoothCurvatureProfiles(std::vector<WayPoint>& path_in, double weight_data, double weight_smooth, double tolerance = 0.1);
@@ -158,6 +173,8 @@ public:
 	static bool CompareTrajectories(const std::vector<WayPoint>& path1, const std::vector<WayPoint>& path2);
 
 	static double GetDistanceToClosestStopLineAndCheck(const std::vector<WayPoint>& path, const WayPoint& p, int& stopLineID,int& stopSignID, int& trafficLightID, const int& prevIndex = 0);
+
+	static bool GetThreePointsInfo(const WayPoint& p0, const WayPoint& p1, const WayPoint& p2, WayPoint& perp_p, double& long_d, double lat_d);
 
 	static void WritePathToFile(const std::string& fileName, const std::vector<WayPoint>& path);
 

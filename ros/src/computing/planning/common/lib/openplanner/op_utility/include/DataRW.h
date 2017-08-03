@@ -454,7 +454,6 @@ public:
 	int ReadAllData(std::vector<AisanRoadEdge>& data_list);
 };
 
-
 class AisanDataConnFileReader : public SimpleReaderBase
 {
 public:

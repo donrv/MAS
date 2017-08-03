@@ -617,7 +617,7 @@ bool way_planner_core::HMI_DoOneStep()
 		for(unsigned int i = 0; i< branches.size(); i++)
 			msg.options.push_back(branches.at(i)->actionCost.at(0).first);
 
-		int close_index = PlannerHNS::PlanningHelpers::GetClosestNextPointIndex(m_GeneratedTotalPaths.at(0), startPoint);
+		int close_index = PlannerHNS::PlanningHelpers::GetClosestNextPointIndexFast(m_GeneratedTotalPaths.at(0), startPoint);
 
 		for(unsigned int i=close_index+1; i < m_GeneratedTotalPaths.at(0).size(); i++)
 		{
