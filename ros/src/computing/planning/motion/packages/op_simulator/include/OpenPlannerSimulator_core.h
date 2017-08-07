@@ -79,10 +79,12 @@ public:
 	PlannerHNS::WayPoint startPose;
 	PlannerHNS::WayPoint goalPose;
 	std_msgs::ColorRGBA modelColor;
+	bool			bEnableLogs;
 
 	SimuCommandParams()
 	{
 		id = 0;
+		bEnableLogs = false;
 		bRandomStart = false;
 		bLooper = false;
 		bRandomGoal = true;

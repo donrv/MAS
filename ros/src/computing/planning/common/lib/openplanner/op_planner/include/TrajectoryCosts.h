@@ -38,6 +38,7 @@ public:
 	double m_WeightLong;
 	double m_WeightLat;
 	double m_WeightLaneChange;
+	double m_LateralSkipDistance;
 
 
 

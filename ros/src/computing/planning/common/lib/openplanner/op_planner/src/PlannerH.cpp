@@ -555,17 +555,20 @@ double PlannerH::PredictPlanUsingDP(const WayPoint& startPose, WayPoint* closest
 		PlanningHelpers::SmoothPath(path, 0.3 , 0.3,0.1);
 		paths.push_back(path);
 
-		int max_branch_index = path.size() > 5 ? 5 : path.size();
-		vector<WayPoint> l_branch;
-		vector<WayPoint> r_branch;
-		l_branch.insert(l_branch.begin(), path.begin(), path.begin()+5);
-		r_branch.insert(r_branch.begin(), path.begin(), path.begin()+5);
+		if(bFindBranches)
+		{
+			int max_branch_index = path.size() > 5 ? 5 : path.size();
+			vector<WayPoint> l_branch;
+			vector<WayPoint> r_branch;
+			l_branch.insert(l_branch.begin(), path.begin(), path.begin()+5);
+			r_branch.insert(r_branch.begin(), path.begin(), path.begin()+5);
 
-		PlanningHelpers::CreateManualBranch(r_branch, 0, FORWARD_RIGHT_DIR);
-		PlanningHelpers::CreateManualBranch(l_branch, 0, FORWARD_LEFT_DIR);
+			PlanningHelpers::CreateManualBranch(r_branch, 0, FORWARD_RIGHT_DIR);
+			PlanningHelpers::CreateManualBranch(l_branch, 0, FORWARD_LEFT_DIR);
 
-		paths.push_back(l_branch);
-		paths.push_back(r_branch);
+			paths.push_back(l_branch);
+			paths.push_back(r_branch);
+		}
 	}
 
 	DeleteWaypoints(all_cell_to_delete);

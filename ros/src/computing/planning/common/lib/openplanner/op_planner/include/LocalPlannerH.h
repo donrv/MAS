@@ -28,10 +28,14 @@ public:
 	std::vector<WayPoint> m_OriginalLocalPath;
 	std::vector<std::vector<WayPoint> > m_TotalPath;
 	std::vector<std::vector<WayPoint> > m_TotalOriginalPath;
+	std::vector<DetectedObject> m_PredictedTrajectoryObstacles;
+	std::vector<std::vector<WayPoint> > m_PredictedPaths;
+	std::vector<std::vector<std::vector<WayPoint> > > m_TotalPredictedPaths;
 	int m_iCurrentTotalPathId;
 	int m_iSafeTrajectory;
+	double m_InitialFollowingDistance;
+	double m_MaxCollisionPredictionTime;
 //	int m_iGlobalPathPrevID;
-	std::vector<std::vector<WayPoint> > m_PredictedPath;
 	std::vector<std::vector<std::vector<WayPoint> > > m_RollOuts;
 	std::string carId;
 	Lane* pLane;
@@ -127,14 +131,14 @@ public:
 private:
 
 	//Obstacle avoidance functionalities
-	bool CalculateObstacleCosts(RoadNetwork& map, const VehicleState& vstatus, const std::vector<DetectedObject>& obj_list);
+	void CalculateMovingObstacleTrajectoriesCosts(RoadNetwork& map, const VehicleState& vstatus, const std::vector<DetectedObject>& obj_list, std::vector<DetectedObject>& future_objs);
 
 	double PredictTimeCostForTrajectory(std::vector<WayPoint>& path,
 			const VehicleState& vstatus,
 			const WayPoint& currState);
 
 	void PredictObstacleTrajectory(RoadNetwork& map,
-			const WayPoint& pos,
+			const DetectedObject& obj,
 			const double& predTime,
 			std::vector<std::vector<WayPoint> >& paths);
 

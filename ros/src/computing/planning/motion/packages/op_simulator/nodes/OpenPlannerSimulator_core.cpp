@@ -260,6 +260,7 @@ void OpenPlannerSimulator::InitializeSimuCar(PlannerHNS::WayPoint start_pose)
 {
 	m_LocalPlanner.m_pCurrentBehaviorState = m_LocalPlanner.m_pInitState;
 	m_LocalPlanner.m_TotalPath.clear();
+	m_LocalPlanner.m_TotalOriginalPath.clear();
 	m_LocalPlanner.m_Path.clear();
 	m_LocalPlanner.m_pCurrentBehaviorState->m_Behavior = PlannerHNS::INITIAL_STATE;
 	m_LocalPlanner.m_pCurrentBehaviorState->GetCalcParams()->bOutsideControl = 1;
@@ -669,14 +670,14 @@ void OpenPlannerSimulator::PlannerMainLoop()
 			UtilityHNS::UtilityH::GetTickCount(m_PlanningTimer);
 
 			//Global Planning Step
-			if(m_LocalPlanner.m_TotalPath.size() > 0 && m_LocalPlanner.m_TotalPath.at(0).size() > 3)
+			if(m_LocalPlanner.m_TotalOriginalPath.size() > 0 && m_LocalPlanner.m_TotalOriginalPath.at(0).size() > 3)
 			{
 				PlannerHNS::RelativeInfo info;
-				bool ret = PlannerHNS::PlanningHelpers::GetRelativeInfoRange(m_LocalPlanner.m_TotalPath, m_LocalPlanner.state, 0.75, info);
-				if(ret == true && info.iGlobalPath >= 0 &&  info.iGlobalPath < (int)m_LocalPlanner.m_TotalPath.size() && info.iFront > 0 && info.iFront < (int)m_LocalPlanner.m_TotalPath.at(info.iGlobalPath).size())
+				bool ret = PlannerHNS::PlanningHelpers::GetRelativeInfoRange(m_LocalPlanner.m_TotalOriginalPath, m_LocalPlanner.state, 0.75, info);
+				if(ret == true && info.iGlobalPath >= 0 &&  info.iGlobalPath < (int)m_LocalPlanner.m_TotalOriginalPath.size() && info.iFront > 0 && info.iFront < (int)m_LocalPlanner.m_TotalOriginalPath.at(info.iGlobalPath).size())
 				{
-					PlannerHNS::WayPoint wp_end = m_LocalPlanner.m_TotalPath.at(info.iGlobalPath).at(m_LocalPlanner.m_TotalPath.at(info.iGlobalPath).size()-1);
-					PlannerHNS::WayPoint wp_first = m_LocalPlanner.m_TotalPath.at(info.iGlobalPath).at(info.iFront);
+					PlannerHNS::WayPoint wp_end = m_LocalPlanner.m_TotalOriginalPath.at(info.iGlobalPath).at(m_LocalPlanner.m_TotalOriginalPath.at(info.iGlobalPath).size()-1);
+					PlannerHNS::WayPoint wp_first = m_LocalPlanner.m_TotalOriginalPath.at(info.iGlobalPath).at(info.iFront);
 					double remaining_distance =   hypot(wp_end.pos.y - wp_first.pos.y, wp_end.pos.x - wp_first.pos.x) + info.to_front_distance;
 					if(remaining_distance <= REPLANNING_DISTANCE)
 					{
@@ -707,7 +708,7 @@ void OpenPlannerSimulator::PlannerMainLoop()
 					PlannerHNS::PlanningHelpers::CalcAngleAndCost(generatedTotalPaths.at(i));
 				}
 
-				m_LocalPlanner.m_TotalPath = generatedTotalPaths;
+				m_LocalPlanner.m_TotalOriginalPath = generatedTotalPaths;
 				m_LocalPlanner.m_pCurrentBehaviorState->GetCalcParams()->bNewGlobalPath = true;
 			}
 
@@ -717,6 +718,7 @@ void OpenPlannerSimulator::PlannerMainLoop()
 				bNewLightSignal = false;
 			}
 			//Local Planning
+			m_TrackedClusters.clear();
 			currBehavior = m_LocalPlanner.DoOneStep(dt, currStatus, m_TrackedClusters, 1, m_Map, 0, m_PrevTrafficLight, true);
 
 			 //Odometry Simulation and Update
@@ -752,8 +754,6 @@ void OpenPlannerSimulator::PlannerMainLoop()
 			p_pose.position.y = pose_center.pos.y;
 			p_pose.position.z = pose_center.pos.z;
 
-
-
 			p_box.position.x = m_CarInfo.width;
 			p_box.position.y = m_CarInfo.length;
 			p_box.position.z = 2.2;
@@ -764,7 +764,7 @@ void OpenPlannerSimulator::PlannerMainLoop()
 
 			pub_SimuBoxPose.publish(sim_data);
 
-			if(currBehavior.bNewPlan)
+			if(currBehavior.bNewPlan && m_SimParams.bEnableLogs)
 			{
 				std::ostringstream str_out;
 				str_out << m_SimParams.logPath;

@@ -203,6 +203,7 @@ public:
 	static void ConvertParticles(std::vector<PlannerHNS::WayPoint>& points, visualization_msgs::MarkerArray& part_mkrs);
 
 	static void InitPredMarkers(const int& nMarkers, visualization_msgs::MarkerArray& paths);
+	static void InitVelocityPredMarkers(const int& nMarkers, const std::string& nsName, visualization_msgs::MarkerArray& paths);
 
 	static void InitMarkers(const int& nMarkers,
 			visualization_msgs::MarkerArray& centers,
@@ -231,6 +232,9 @@ public:
 	static void VisualizeBehaviorState(const PlannerHNS::WayPoint& currState, const PlannerHNS::BehaviorState& beh, const bool& bGreenLight,const int& avoidDirection, visualization_msgs::Marker& behaviorMarker);
 
 	static void UpdateRoadMap(const AutowareRoadNetwork& src_map, PlannerHNS::RoadNetwork& out_map);
+
+	static void CreateSpeedPredictionsGradients(PlannerHNS::LocalPlannerH& localPlanner, visualization_msgs::MarkerArray& mkrs_list_dummy, visualization_msgs::MarkerArray& mkrs_list);
+	static void CreateOthersSpeedPredictionsGradients(PlannerHNS::LocalPlannerH& localPlanner, visualization_msgs::MarkerArray& mkrs_list_dummy, visualization_msgs::MarkerArray& mkrs_list);
 
 };
 

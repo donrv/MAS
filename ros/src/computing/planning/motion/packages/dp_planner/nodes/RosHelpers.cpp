@@ -52,6 +52,77 @@ void RosHelpers::GetTransformFromTF(const std::string parent_frame, const std::s
 	}
 }
 
+void RosHelpers::CreateSpeedPredictionsGradients(PlannerHNS::LocalPlannerH& localPlanner, visualization_msgs::MarkerArray& mkrs_list_dummy, visualization_msgs::MarkerArray& mkrs_list)
+{
+	if(localPlanner.m_TotalPath.size() == 0 ) return;
+
+	mkrs_list = mkrs_list_dummy;
+	PlannerHNS::WayPoint* pWP = 0;
+	double red_value = 0;
+	double green_value = 0;
+	for(unsigned int i=0; i < localPlanner.m_TotalPath.at(localPlanner.m_iCurrentTotalPathId).size(); i++)
+	{
+		pWP = &localPlanner.m_TotalPath.at(localPlanner.m_iCurrentTotalPathId).at(i);
+		if(pWP->timeCost < 0.1) continue;
+		red_value = 2.0 - pWP->timeCost/20.0;
+		if(red_value < 0) red_value = 0;
+		if(red_value <=1.0)
+		{
+			green_value = 1;
+		}
+		else
+		{
+			green_value = 2.0 - red_value;
+			red_value = 1;
+		}
+		visualization_msgs::Marker mkr = RosHelpers::CreateGenMarker(pWP->pos.x,pWP->pos.y,pWP->pos.z,1,red_value,green_value,0, 0.5,i,"ForwardPred", visualization_msgs::Marker::ARROW);
+		mkr.pose.orientation = tf::createQuaternionMsgFromYaw(pWP->pos.a);
+		if(i < mkrs_list.markers.size())
+			mkrs_list.markers.at(i) = mkr;
+		else
+			mkrs_list.markers.push_back(mkr);
+	}
+}
+
+void RosHelpers::CreateOthersSpeedPredictionsGradients(PlannerHNS::LocalPlannerH& localPlanner, visualization_msgs::MarkerArray& mkrs_list_dummy, visualization_msgs::MarkerArray& mkrs_list)
+{
+	mkrs_list = mkrs_list_dummy;
+	PlannerHNS::WayPoint* pWP = 0;
+	double red_value = 0;
+	double green_value = 0;
+	int nCounterIds = 0;
+	for(unsigned int k=0; k < localPlanner.m_TotalPredictedPaths.size(); k++)
+	{
+		for(unsigned int j=0; j < localPlanner.m_TotalPredictedPaths.at(k).size(); j++)
+		{
+			for(unsigned int i=0; i < localPlanner.m_TotalPredictedPaths.at(k).at(j).size(); i++)
+			{
+				pWP = &localPlanner.m_TotalPredictedPaths.at(k).at(j).at(i);
+				if(pWP->timeCost < 0.1) continue;
+				red_value = 2.0 - pWP->timeCost/20.0;
+				if(red_value < 0) red_value = 0;
+				if(red_value <=1.0)
+				{
+					green_value = 1;
+				}
+				else
+				{
+					green_value = 2.0 - red_value;
+					red_value = 1;
+				}
+				visualization_msgs::Marker mkr = RosHelpers::CreateGenMarker(pWP->pos.x,pWP->pos.y,pWP->pos.z,1,red_value,green_value,0, 0.5,nCounterIds,"OthersForwardPred", visualization_msgs::Marker::ARROW);
+				mkr.pose.orientation = tf::createQuaternionMsgFromYaw(pWP->pos.a);
+				if(nCounterIds < mkrs_list.markers.size())
+					mkrs_list.markers.at(nCounterIds) = mkr;
+				else
+					mkrs_list.markers.push_back(mkr);
+
+				nCounterIds++;
+			}
+		}
+	}
+}
+
 void RosHelpers::ConvertFromPlannerHToAutowarePathFormat(const std::vector<PlannerHNS::WayPoint>& path, const int& iStart,
 		autoware_msgs::lane& trajectory)
 {
@@ -369,6 +440,16 @@ visualization_msgs::Marker RosHelpers::CreateGenMarker(const double& x, const do
 	mkr.pose.orientation = tf::createQuaternionMsgFromYaw(a);
 	mkr.id = id;
 	return mkr;
+}
+
+void RosHelpers::InitVelocityPredMarkers(const int& nMarkers,const std::string& nsName, visualization_msgs::MarkerArray& paths)
+{
+	paths.markers.clear();
+	for(int i=0; i<nMarkers; i++)
+	{
+		visualization_msgs::Marker mkr = CreateGenMarker(0,0,0,0,1,1,1,1,i, nsName, visualization_msgs::Marker::ARROW);
+		paths.markers.push_back(mkr);
+	}
 }
 
 void RosHelpers::InitPredMarkers(const int& nMarkers, visualization_msgs::MarkerArray& paths)

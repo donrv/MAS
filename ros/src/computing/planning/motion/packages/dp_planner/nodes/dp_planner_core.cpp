@@ -111,6 +111,8 @@ PlannerX::PlannerX()
 	pub_AStarStartPoint = nh.advertise<geometry_msgs::PoseStamped>("global_plan_start", 1);
 	pub_AStarGoalPoint = nh.advertise<geometry_msgs::PoseStamped>("global_plan_goal", 1);
 
+	pub_OthersForwardPredictionRviz = nh.advertise<visualization_msgs::MarkerArray>("OthersForwardPredictionVelocity", 1);
+	pub_ForwardPredictionRviz = nh.advertise<visualization_msgs::MarkerArray>("ForwardPredictionVelocity", 1);
 	pub_ConnectedPointsRviz = nh.advertise<visualization_msgs::MarkerArray>("AllConnectedPoints", 1);
 	pub_DetectedPolygonsRviz = nh.advertise<visualization_msgs::MarkerArray>("detected_polygons", 1);
 	pub_TrackedObstaclesRviz = nh.advertise<jsk_recognition_msgs::BoundingBoxArray>("dp_planner_tracked_boxes", 1);
@@ -207,6 +209,8 @@ PlannerX::PlannerX()
 	m_DetectedPolygonsActual = m_DetectedPolygonsDummy;
 	RosHelpers::InitMarkers(m_nDummyObjPerRep, m_DetectedPolygonsDummy.at(0), m_DetectedPolygonsDummy.at(1), m_DetectedPolygonsDummy.at(2), m_DetectedPolygonsDummy.at(3));
 	RosHelpers::InitPredMarkers(100, m_PredictedTrajectoriesDummy);
+	RosHelpers::InitVelocityPredMarkers(200, "ForwardPred", m_ForwardPredictionMarkersDummy);
+	RosHelpers::InitVelocityPredMarkers(500, "OthersForwardPred", m_OthersForwardPredictionMarkersDummy);
 }
 
 PlannerX::~PlannerX()
@@ -469,7 +473,7 @@ void PlannerX::callbackGetInitPose(const geometry_msgs::PoseWithCovarianceStampe
 		m_CurrentPos = m_InitPos;
 		bInitPos = true;
 
-		cout << endl;
+		//cout << endl;
 
 		/**
 		 * Testing Code
@@ -990,7 +994,7 @@ void PlannerX::GenerateCurbsObstacles(std::vector<PlannerHNS::DetectedObject>& c
 	PlannerHNS::RelativeInfo car_info;
 	PlannerHNS::PlanningHelpers::GetRelativeInfo(m_LocalPlanner.m_TotalPath.at(0), m_LocalPlanner.state, car_info);
 
-	cout << endl;
+	//cout << endl;
 	for(unsigned int ic = 0; ic < m_Map.curbs.size(); ic++)
 	{
 
@@ -1011,7 +1015,7 @@ void PlannerX::GenerateCurbsObstacles(std::vector<PlannerHNS::DetectedObject>& c
 			double longitudinalDist = PlannerHNS::PlanningHelpers::GetExactDistanceOnTrajectory(m_LocalPlanner.m_TotalPath.at(0), car_info, obj_info);
 
 
-			if(fabs(obj_info.perp_distance) > 2.5 || longitudinalDist < m_LocalPlanner.m_CarInfo.length/2.0 || longitudinalDist > m_LocalPlannerParams.horizonDistance)
+			if(fabs(obj_info.perp_distance) > 2.5 || longitudinalDist < m_LocalPlanner.m_CarInfo.length/2.0 || longitudinalDist > m_LocalPlannerParams.minFollowingDistance)
 				continue;
 
 			//cout << "Curb Proximity = " << obj_info.perp_distance << ", Distance On Path = " << longitudinalDist << ", Info : "<< car_info.iBack << "," << obj_info.iFront <<  endl;
@@ -1103,6 +1107,36 @@ void PlannerX::VisualizeLocalPlanner()
 	m_AllRollouts.markers.clear();
 	RosHelpers::ConvertFromPlannerHToAutowareVisualizePathFormat(m_LocalPlanner.m_Path, m_LocalPlanner.m_RollOuts, m_LocalPlanner, m_AllRollouts);
 	pub_LocalTrajectoriesRviz.publish(m_AllRollouts);
+
+	m_AllConnectedLines.markers.clear();
+	for(unsigned int i=0; i < PlannerHNS::PlanningHelpers::m_TestingClosestPoint.size(); i++)
+	{
+		visualization_msgs::Marker poly_mkr = RosHelpers::CreateGenMarker(0,0,0,0, 0,0,1,0.1, i,"PointsRelations", visualization_msgs::Marker::LINE_STRIP);
+
+		geometry_msgs::Point point1,point2;
+		point1.x = PlannerHNS::PlanningHelpers::m_TestingClosestPoint.at(i).first.x;
+		point1.y = PlannerHNS::PlanningHelpers::m_TestingClosestPoint.at(i).first.y;
+		point1.z = PlannerHNS::PlanningHelpers::m_TestingClosestPoint.at(i).first.z;
+
+		point2.x = PlannerHNS::PlanningHelpers::m_TestingClosestPoint.at(i).second.x;
+		point2.y = PlannerHNS::PlanningHelpers::m_TestingClosestPoint.at(i).second.y;
+		point2.z = PlannerHNS::PlanningHelpers::m_TestingClosestPoint.at(i).second.z;
+
+		poly_mkr.points.push_back(point1);
+		poly_mkr.points.push_back(point2);
+
+		m_AllConnectedLines.markers.push_back(poly_mkr);
+	}
+
+	pub_ConnectedPointsRviz.publish(m_AllConnectedLines);
+	PlannerHNS::PlanningHelpers::m_TestingClosestPoint.clear();
+
+
+	RosHelpers::CreateSpeedPredictionsGradients(m_LocalPlanner, m_ForwardPredictionMarkersDummy, m_ForwardPredictionMarkers);
+	pub_ForwardPredictionRviz.publish(m_ForwardPredictionMarkers);
+
+	RosHelpers::CreateOthersSpeedPredictionsGradients(m_LocalPlanner, m_OthersForwardPredictionMarkersDummy, m_OthersForwardPredictionMarkers);
+	pub_OthersForwardPredictionRviz.publish(m_OthersForwardPredictionMarkers);
 
 
 	/**
@@ -1265,29 +1299,6 @@ void PlannerX::PlannerMainLoop()
 			m_CurrentBehavior = m_LocalPlanner.DoOneStep(dt, m_VehicleState, m_AllObstacles, 1, m_Map, m_bEmergencyStop, m_PrevTrafficLight, true);
 
 			m_TotalPlanningTime = UtilityHNS::UtilityH::GetTimeDiffNow(t);
-
-			m_AllConnectedLines.markers.clear();
-			for(unsigned int i=0; i < PlannerHNS::PlanningHelpers::m_TestingClosestPoint.size(); i++)
-			{
-				visualization_msgs::Marker poly_mkr = RosHelpers::CreateGenMarker(0,0,0,0, 0,0,1,0.1, i,"PointsRelations", visualization_msgs::Marker::LINE_STRIP);
-
-				geometry_msgs::Point point1,point2;
-				point1.x = PlannerHNS::PlanningHelpers::m_TestingClosestPoint.at(i).first.x;
-				point1.y = PlannerHNS::PlanningHelpers::m_TestingClosestPoint.at(i).first.y;
-				point1.z = PlannerHNS::PlanningHelpers::m_TestingClosestPoint.at(i).first.z;
-
-				point2.x = PlannerHNS::PlanningHelpers::m_TestingClosestPoint.at(i).second.x;
-				point2.y = PlannerHNS::PlanningHelpers::m_TestingClosestPoint.at(i).second.y;
-				point2.z = PlannerHNS::PlanningHelpers::m_TestingClosestPoint.at(i).second.z;
-
-				poly_mkr.points.push_back(point1);
-				poly_mkr.points.push_back(point2);
-
-				m_AllConnectedLines.markers.push_back(poly_mkr);
-			}
-
-			pub_ConnectedPointsRviz.publish(m_AllConnectedLines);
-			PlannerHNS::PlanningHelpers::m_TestingClosestPoint.clear();
 		}
 		else
 		{

@@ -325,229 +325,121 @@ int PlanningHelpers::GetClosestNextPointIndexFastV2(const vector<WayPoint>& traj
 
 	int size = (int)trajectory.size();
 
-	if(size < 2 || prevIndex < 0) return 0;
+		if(size < 2 || prevIndex < 0) return 0;
 
-	double d = 0, minD = 9999999999;
-	int min_index  = prevIndex;
-	int iStart = prevIndex;
-	int iEnd = size;
-	double resolution = hypot(trajectory[1].pos.y -trajectory[0].pos.y , trajectory[1].pos.x -trajectory[0].pos.x);
+		double d = 0, minD = 9999999999;
 
-	//divide every 5 meters
-	int skip_factor = 5;
-	int skip = skip_factor/resolution;
 
-	for(int i=0; i< size; i+=skip)
-	{
-		d  = distance2pointsSqr(trajectory[i].pos, p.pos);
-		if(d < minD)
+		double resolution = hypot(trajectory[1].pos.y -trajectory[0].pos.y , trajectory[1].pos.x -trajectory[0].pos.x);
+		double d_to_zero = hypot(p.pos.y -trajectory[0].pos.y , p.pos.x - trajectory[0].pos.x);
+		double d_to_size = hypot(trajectory[size-1].pos.y - p.pos.y , trajectory[size-1].pos.x - p.pos.x);
+
+		int iStart = d_to_zero / resolution;
+		WayPoint perp_p;
+		double lat_d = 0;
+		double long_d = 0;
+
+		if(iStart > 0 && iStart < size-1 &&  GetThreePointsInfo(trajectory.at(0), trajectory.at(iStart), p, perp_p, long_d, lat_d))
 		{
-			iStart = i-skip;
-			iEnd = i+skip;
-			minD = d;
-			min_index = i;
+	//		m_TestingClosestPoint.push_back(make_pair(trajectory.at(0).pos, p.pos));
+	//		m_TestingClosestPoint.push_back(make_pair(trajectory.at(iStart).pos, p.pos));
+			iStart = long_d / resolution;
 		}
-	}
 
-	d  = distance2pointsSqr(trajectory[size-1].pos, p.pos);
-	if(d < minD)
-	{
-		iStart = size-skip;
-		iEnd = size+skip;
-		minD = d;
-		min_index = size-1;
-	}
+		if(iStart>0)
+			iStart--;
 
-	if(iStart < 0) iStart = 0;
-	if(iEnd >= size) iEnd = size -1;
+		int iEnd = size - (d_to_size / resolution);
 
-	for(int i=iStart; i< iEnd; i++)
-	{
-		d  = distance2pointsSqr(trajectory[i].pos, p.pos);
-		if(d < minD)
+		if(iEnd >= 0 && iEnd < size-2 &&  GetThreePointsInfo(trajectory.at(size-1), trajectory.at(iEnd), p, perp_p, long_d, lat_d))
 		{
-			min_index = i;
-			minD = d;
+	//		m_TestingClosestPoint.push_back(make_pair(trajectory.at(size-1).pos, p.pos));
+	//		m_TestingClosestPoint.push_back(make_pair(trajectory.at(iEnd).pos, p.pos));
+			iEnd = size - (long_d / resolution);
 		}
-	}
 
-	if(min_index < size-2)
-	{
-		GPSPoint curr, next;
-		curr = trajectory[min_index].pos;
-		next = trajectory[min_index+1].pos;
-		GPSPoint v_1(p.pos.x - curr.x   ,p.pos.y - curr.y,0,0);
-		double norm1 = pointNorm(v_1);
-		GPSPoint v_2(next.x - curr.x,next.y - curr.y,0,0);
-		double norm2 = pointNorm(v_2);
-		double dot_pro = v_1.x*v_2.x + v_1.y*v_2.y;
-		double a = UtilityH::FixNegativeAngle(acos(dot_pro/(norm1*norm2)));
-		if(a <= M_PI_2)
-			min_index = min_index+1;
-	}
+		if(iEnd < size-1)
+			iEnd++;
 
-	m_TestingClosestPoint.push_back(make_pair(trajectory.at(min_index).pos, p.pos));
+	//	cout << "Fast=>";
+	//	cout << " Start: " << iStart;
+	//	cout << ", End: " << iEnd;
 
-	return min_index;
-}
+		double d_from_start = d_to_zero;
+		if(iStart < size)
+			d_from_start = hypot(trajectory[iStart].pos.y - p.pos.y , trajectory[iStart].pos.x - p.pos.x);
 
-int PlanningHelpers::GetClosestNextPointIndexFast(const vector<WayPoint>& trajectory, const WayPoint& p,const int& prevIndex )
-{
+		double d_from_end = d_to_size;
+		if(iEnd >= 0)
+			d_from_end = hypot(trajectory[iEnd].pos.y - p.pos.y , trajectory[iEnd].pos.x - p.pos.x);
 
-	//return GetClosestNextPointIndex(trajectory, p, prevIndex); //for comparison test between the old and fast functions
-
-	int size = (int)trajectory.size();
-
-	if(size < 2 || prevIndex < 0) return 0;
-
-	double d = 0, minD = 9999999999;
-
-
-	double resolution = hypot(trajectory[1].pos.y -trajectory[0].pos.y , trajectory[1].pos.x -trajectory[0].pos.x);
-	double d_to_zero = hypot(p.pos.y -trajectory[0].pos.y , p.pos.x - trajectory[0].pos.x);
-	double d_to_size = hypot(trajectory[size-1].pos.y - p.pos.y , trajectory[size-1].pos.x - p.pos.x);
-
-	int iStart = d_to_zero / resolution;
-	WayPoint perp_p;
-	double lat_d = 0;
-	double long_d = 0;
-
-	if(iStart > 0 && iStart < size-1 &&  GetThreePointsInfo(trajectory.at(0), trajectory.at(iStart), p, perp_p, long_d, lat_d))
-	{
-//		m_TestingClosestPoint.push_back(make_pair(trajectory.at(0).pos, p.pos));
-//		m_TestingClosestPoint.push_back(make_pair(trajectory.at(iStart).pos, p.pos));
-		iStart = long_d / resolution;
-	}
-
-	if(iStart>0)
-		iStart--;
-
-	int iEnd = size - (d_to_size / resolution);
-
-	if(iEnd >= 0 && iEnd < size-2 &&  GetThreePointsInfo(trajectory.at(size-1), trajectory.at(iEnd), p, perp_p, long_d, lat_d))
-	{
-//		m_TestingClosestPoint.push_back(make_pair(trajectory.at(size-1).pos, p.pos));
-//		m_TestingClosestPoint.push_back(make_pair(trajectory.at(iEnd).pos, p.pos));
-		iEnd = size - (long_d / resolution);
-	}
-
-	if(iEnd < size-1)
-		iEnd++;
-
-//	cout << "Fast=>";
-//	cout << " Start: " << iStart;
-//	cout << ", End: " << iEnd;
-
-	double d_from_start = d_to_zero;
-	if(iStart < size)
-		d_from_start = hypot(trajectory[iStart].pos.y - p.pos.y , trajectory[iStart].pos.x - p.pos.x);
-
-	double d_from_end = d_to_size;
-	if(iEnd >= 0)
-		d_from_end = hypot(trajectory[iEnd].pos.y - p.pos.y , trajectory[iEnd].pos.x - p.pos.x);
-
-	if(iStart >= size && iEnd < 0)
-	{
-		if(d_to_zero < d_to_size)
+		if(iStart >= size && iEnd < 0)
 		{
-			iStart = 0;
-			iEnd = size/2 -1;
+			if(d_to_zero < d_to_size)
+			{
+				iStart = 0;
+				iEnd = size/2 -1;
+			}
+			else
+			{
+				iStart = size/2;
+				iEnd = size - 1;
+			}
 		}
 		else
 		{
-			iStart = size/2;
-			iEnd = size - 1;
-		}
-	}
-	else
-	{
-		if(iStart >=size || (d_from_start > d_to_zero))
-			iStart = 0;
+			if(iStart >=size || (d_from_start > d_to_zero))
+				iStart = 0;
 
-		if(iEnd < 0 || (d_from_end > d_to_size))
+			if(iEnd < 0 || (d_from_end > d_to_size))
+				iEnd = size-1;
+		}
+
+		if(iStart > iEnd)
 			iEnd = size-1;
-	}
 
-	if(iStart > iEnd)
-		iEnd = size-1;
+		int min_index  =  iStart;
 
-	int min_index  =  iStart;
-
-	int ncout = 0;
-	for(int i=iStart; i<= iEnd; i++)
-	{
-		d  = distance2pointsSqr(trajectory[i].pos, p.pos);
-		if(d < minD)
+		int ncout = 0;
+		for(int i=iStart; i<= iEnd; i++)
 		{
-			min_index = i;
-			minD = d;
+			d  = distance2pointsSqr(trajectory[i].pos, p.pos);
+			if(d < minD)
+			{
+				min_index = i;
+				minD = d;
+			}
+			ncout++;
 		}
-		ncout++;
-	}
 
-//	cout << ", Minimum Before: " << min_index;
+	//	cout << ", Minimum Before: " << min_index;
 
-	if(min_index < size-2)
-	{
-		GPSPoint curr, next;
-		curr = trajectory[min_index].pos;
-		next = trajectory[min_index+1].pos;
-		GPSPoint v_1(p.pos.x - curr.x   ,p.pos.y - curr.y,0,0);
-		double norm1 = pointNorm(v_1);
-		GPSPoint v_2(next.x - curr.x,next.y - curr.y,0,0);
-		double norm2 = pointNorm(v_2);
-		double dot_pro = v_1.x*v_2.x + v_1.y*v_2.y;
-		double a = UtilityH::FixNegativeAngle(acos(dot_pro/(norm1*norm2)));
-		if(a <= M_PI_2)
-			min_index = min_index+1;
-	}
+		if(min_index < size-2)
+		{
+			GPSPoint curr, next;
+			curr = trajectory[min_index].pos;
+			next = trajectory[min_index+1].pos;
+			GPSPoint v_1(p.pos.x - curr.x   ,p.pos.y - curr.y,0,0);
+			double norm1 = pointNorm(v_1);
+			GPSPoint v_2(next.x - curr.x,next.y - curr.y,0,0);
+			double norm2 = pointNorm(v_2);
+			double dot_pro = v_1.x*v_2.x + v_1.y*v_2.y;
+			double a = UtilityH::FixNegativeAngle(acos(dot_pro/(norm1*norm2)));
+			if(a <= M_PI_2)
+				min_index = min_index+1;
+		}
 
-	//m_TestingClosestPoint.push_back(make_pair(trajectory.at(min_index).pos, p.pos));
+	//	m_TestingClosestPoint.push_back(make_pair(trajectory.at(min_index).pos, p.pos));
 
-//	cout << ", Minimum After: " << min_index << ", Big O: " << ncout << endl;
-//	cout << "d_zero: " << d_to_zero << ", d_start: " << d_from_start << endl;
-//	cout << "d_size: " << d_to_size << ", d_end: " << d_from_end << endl;
-	return min_index;
+	//	cout << ", Minimum After: " << min_index << ", Big O: " << ncout << endl;
+	//	cout << "d_zero: " << d_to_zero << ", d_start: " << d_from_start << endl;
+	//	cout << "d_size: " << d_to_size << ", d_end: " << d_from_end << endl;
+		return min_index;
+
+
 }
 
-int PlanningHelpers::GetClosestNextPointIndexDirection_(const vector<WayPoint>& trajectory, const WayPoint& p,const int& prevIndex )
-{
-	if(trajectory.size() == 0 || prevIndex < 0) return 0;
-
-	double d = 0, minD = 9999999999;
-	int min_index  = prevIndex;
-
-	for(unsigned int i=prevIndex; i< trajectory.size(); i++)
-	{
-		d  = distance2pointsSqr(trajectory.at(i).pos, p.pos);
-		double angle_diff = UtilityH::AngleBetweenTwoAnglesPositive(trajectory.at(i).pos.a, p.pos.a)*RAD2DEG;
-
-		if(d < minD && angle_diff < 45)
-		{
-			min_index = i;
-			minD = d;
-		}
-	}
-
-	if(min_index < (int)trajectory.size()-2)
-	{
-		GPSPoint curr, next;
-		curr = trajectory.at(min_index).pos;
-		next = trajectory.at(min_index+1).pos;
-		GPSPoint v_1(p.pos.x - curr.x   ,p.pos.y - curr.y,0,0);
-		double norm1 = pointNorm(v_1);
-		GPSPoint v_2(next.x - curr.x,next.y - curr.y,0,0);
-		double norm2 = pointNorm(v_2);
-		double dot_pro = v_1.x*v_2.x + v_1.y*v_2.y;
-		double a = UtilityH::FixNegativeAngle(acos(dot_pro/(norm1*norm2)));
-		if(a <= M_PI_2)
-			min_index = min_index+1;
-	}
-
-	return min_index;
-}
-
-int PlanningHelpers::GetClosestNextPointIndexDirectionFast(const vector<WayPoint>& trajectory, const WayPoint& p,const int& prevIndex )
+int PlanningHelpers::GetClosestNextPointIndexFast(const vector<WayPoint>& trajectory, const WayPoint& p,const int& prevIndex )
 {
 	int size = (int)trajectory.size();
 
@@ -565,9 +457,11 @@ int PlanningHelpers::GetClosestNextPointIndexDirectionFast(const vector<WayPoint
 
 		for(int i=0; i< size; i+=skip)
 		{
-			d  = distance2pointsSqr(trajectory[i].pos, p.pos);
-			double angle_diff = UtilityH::AngleBetweenTwoAnglesPositive(trajectory[i].pos.a, p.pos.a)*RAD2DEG;
-			if(d < minD && angle_diff < 45)
+			if(i+skip/2 < size)
+				d  = (distance2pointsSqr(trajectory[i].pos, p.pos) + distance2pointsSqr(trajectory[i+skip/2].pos, p.pos))/2.0;
+			else
+				d  = distance2pointsSqr(trajectory[i].pos, p.pos);
+			if(d < minD)
 			{
 				iStart = i-skip;
 				iEnd = i+skip;
@@ -576,9 +470,12 @@ int PlanningHelpers::GetClosestNextPointIndexDirectionFast(const vector<WayPoint
 			}
 		}
 
-		d  = distance2pointsSqr(trajectory[size-1].pos, p.pos);
-		double angle_diff = UtilityH::AngleBetweenTwoAnglesPositive(trajectory[size-1].pos.a, p.pos.a)*RAD2DEG;
-		if(d < minD && angle_diff < 45)
+		if((size - skip/2 - 1) > 0)
+			d  = (distance2pointsSqr(trajectory[size-1].pos, p.pos) + distance2pointsSqr(trajectory[size - skip/2 -1 ].pos, p.pos))/2.0;
+		else
+			d  = distance2pointsSqr(trajectory[size-1].pos, p.pos);
+
+		if(d < minD)
 		{
 			iStart = size-skip;
 			iEnd = size+skip;
@@ -592,15 +489,43 @@ int PlanningHelpers::GetClosestNextPointIndexDirectionFast(const vector<WayPoint
 		for(int i=iStart; i< iEnd; i++)
 		{
 			d  = distance2pointsSqr(trajectory[i].pos, p.pos);
-			double angle_diff = UtilityH::AngleBetweenTwoAnglesPositive(trajectory[i].pos.a, p.pos.a)*RAD2DEG;
-			if(d < minD && angle_diff < 45)
+			if(d < minD)
 			{
 				min_index = i;
 				minD = d;
 			}
 		}
 
-	for(int i=iStart; i<= iEnd; i++)
+		if(min_index < size-2)
+		{
+			GPSPoint curr, next;
+			curr = trajectory[min_index].pos;
+			next = trajectory[min_index+1].pos;
+			GPSPoint v_1(p.pos.x - curr.x   ,p.pos.y - curr.y,0,0);
+			double norm1 = pointNorm(v_1);
+			GPSPoint v_2(next.x - curr.x,next.y - curr.y,0,0);
+			double norm2 = pointNorm(v_2);
+			double dot_pro = v_1.x*v_2.x + v_1.y*v_2.y;
+			double a = UtilityH::FixNegativeAngle(acos(dot_pro/(norm1*norm2)));
+			if(a <= M_PI_2)
+				min_index = min_index+1;
+		}
+
+		//m_TestingClosestPoint.push_back(make_pair(trajectory.at(min_index).pos, p.pos));
+
+		return min_index;
+}
+
+int PlanningHelpers::GetClosestNextPointIndexDirectionFast(const vector<WayPoint>& trajectory, const WayPoint& p,const int& prevIndex )
+{
+	int size = (int)trajectory.size();
+
+	if(size < 2 || prevIndex < 0) return 0;
+
+	double d = 0, minD = 9999999999;
+	int min_index  = prevIndex;
+
+	for(unsigned int i=prevIndex; i< size; i++)
 	{
 		d  = distance2pointsSqr(trajectory[i].pos, p.pos);
 		double angle_diff = UtilityH::AngleBetweenTwoAnglesPositive(trajectory[i].pos.a, p.pos.a)*RAD2DEG;
@@ -612,11 +537,11 @@ int PlanningHelpers::GetClosestNextPointIndexDirectionFast(const vector<WayPoint
 		}
 	}
 
-	if(min_index < size-2)
+	if(min_index < (int)trajectory.size()-2)
 	{
 		GPSPoint curr, next;
-		curr = trajectory[min_index].pos;
-		next = trajectory[min_index+1].pos;
+		curr = trajectory.at(min_index).pos;
+		next = trajectory.at(min_index+1).pos;
 		GPSPoint v_1(p.pos.x - curr.x   ,p.pos.y - curr.y,0,0);
 		double norm1 = pointNorm(v_1);
 		GPSPoint v_2(next.x - curr.x,next.y - curr.y,0,0);

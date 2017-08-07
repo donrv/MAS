@@ -40,6 +40,7 @@ LocalPlannerH::LocalPlannerH()
 	m_SimulationSteeringDelayFactor = 0.1;
 	UtilityH::GetTickCount(m_SteerDelayTimer);
 	m_PredictionTime = 0;
+	m_MaxCollisionPredictionTime = 6;
 	InitBehaviorStates();
 }
 
@@ -68,7 +69,7 @@ void LocalPlannerH::Init(const ControllerParams& ctrlParams, const PlannerHNS::P
  		m_CurrentShift 		=  m_CurrentShiftD = SHIFT_POS_NN;
  		m_CurrentAccSteerAngle = m_CurrentAccVelocity = 0;
  		m_params = params;
-
+ 		m_InitialFollowingDistance = m_params.minFollowingDistance;
  		if(m_pCurrentBehaviorState)
  			m_pCurrentBehaviorState->SetBehaviorsParams(&m_params);
  	}
@@ -103,6 +104,8 @@ void LocalPlannerH::InitBehaviorStates()
 
 	m_pStopSignWaitState->decisionMakingTime = 5.0;
 	m_pStopSignWaitState->InsertNextState(m_pStopSignStopState);
+
+	m_pAvoidObstacleState->decisionMakingTime = 0.1;
 
 	m_pCurrentBehaviorState = m_pInitState;
 }
@@ -344,180 +347,81 @@ double LocalPlannerH::PredictTimeCostForTrajectory(std::vector<PlannerHNS::WayPo
 {
 	PlanningParams* pParams = m_pCurrentBehaviorState->m_pParams;
 
-		//1- Calculate time prediction for each trajectory
+	//1- Calculate time prediction for each trajectory
 	if(path.size() == 0) return 0;
-
-//	SimulatedTrajectoryFollower predControl;
-//	ControllerParams params;
-//	params.Steering_Gain = PID_CONST(1.5, 0.0, 0.0);
-//	params.Velocity_Gain = PID_CONST(0.2, 0.01, 0.1);
-//	params.minPursuiteDistance = 3.0;
-//
-//	predControl.Init(params, m_CarInfo);
-//	//double totalDistance = 0;
-//	VehicleState CurrentState = vstatus;
-//	VehicleState CurrentSteeringD;
-//	bool bNewPath = true;
-//	WayPoint localState = currState;
-//	WayPoint prevState = currState;
-//	int iPrevIndex = 0;
 	double accum_time = 0;
-//	double pred_max_time = 10.0;
-//	double endDistance = pParams->microPlanDistance/2.0;
-//
-//	for(unsigned int i = 0 ; i < path.size(); i++)
-//	{
-//		path.at(i).collisionCost = 0;
-//		path.at(i).timeCost = -1;
-//	}
-//
-//	int startIndex = PlanningHelpers::GetClosestPointIndex(path, state);
-//	double total_distance = 0;
-//	path.at(startIndex).timeCost = 0;
-//	for(unsigned int i=startIndex+1; i<path.size(); i++)
-//	{
-//		total_distance += hypot(path.at(i).pos.x- path.at(i-1).pos.x,path.at(i).pos.y- path.at(i-1).pos.y);
-//		if(m_CurrentVelocity > 0.1 && total_distance > 0.1)
-//			accum_time = total_distance/m_CurrentVelocity;
-//		path.at(i).timeCost = accum_time;
-//		if(total_distance > endDistance)
-//			break;
-//	}
+	double endDistance = pParams->minFollowingDistance;
 
-//	while(totalDistance < pParams->microPlanDistance/2.0 && accum_time < pred_max_time)
-//	{
-//		double dt = 0.05;
-//		PlannerHNS::BehaviorState currMessage;
-//		currMessage.state = FORWARD_STATE;
-//		currMessage.maxVelocity = PlannerHNS::PlanningHelpers::GetVelocityAhead(m_Path, state, 1.5*CurrentState.speed*3.6);
-//
-//		ControllerParams c_params = m_ControlParams;
-//		c_params.SteeringDelay = m_ControlParams.SteeringDelay / (1.0-UtilityH::GetMomentumScaleFactor(CurrentState.speed));
-//		predControl.Init(c_params, m_CarInfo);
-//		CurrentSteeringD = predControl.DoOneStep(dt, currMessage, path, localState, CurrentState, bNewPath);
-//
-//		if(bNewPath) // first call
-//		{
-//			if(predControl.m_iCalculatedIndex > 0)
-//			{
-//				for(unsigned int j=0; j < predControl.m_iCalculatedIndex; j++)
-//					path.at(j).timeCost = -1;
-//			}
-//		}
-//		else
-//		{
-//			if(predControl.m_iCalculatedIndex != iPrevIndex)
-//				path.at(iPrevIndex).timeCost = accum_time;
-//		}
-//
-//		accum_time+=dt;
-//		bNewPath = false;
-//
-//		//Update State
-//		CurrentState = CurrentSteeringD;
-//
-//		//Localize Me
-//		localState.pos.x	 +=  CurrentState.speed * dt * cos(localState.pos.a);
-//		localState.pos.y	 +=  CurrentState.speed * dt * sin(localState.pos.a);
-//		localState.pos.a	 +=  CurrentState.speed * dt * tan(CurrentState.steer)  / m_CarInfo.wheel_base;
-//
-//		totalDistance += distance2points(prevState.pos, localState.pos);
-//
-//		prevState = localState;
-//		iPrevIndex = predControl.m_iCalculatedIndex;
-//	}
+	for(unsigned int i = 0 ; i < path.size(); i++)
+	{
+		path.at(i).collisionCost = 0;
+		path.at(i).timeCost = -1;
+	}
+
+	RelativeInfo info;
+	PlanningHelpers::GetRelativeInfo(path, state, info);
+	double total_distance = 0;
+	path.at(info.iFront).timeCost = 0;
+	if(info.iFront == 0 ) info.iFront++;
+	for(unsigned int i=info.iFront; i<path.size(); i++)
+	{
+		total_distance += hypot(path.at(i).pos.x- path.at(i-1).pos.x,path.at(i).pos.y- path.at(i-1).pos.y);
+		if(vstatus.speed > 0.1 && total_distance > 0.1)
+			accum_time = total_distance/vstatus.speed;
+
+		path.at(i).timeCost = accum_time;
+		if(total_distance > endDistance)
+			break;
+	}
 
 	return accum_time;
 }
 
-void LocalPlannerH::PredictObstacleTrajectory(PlannerHNS::RoadNetwork& map, const PlannerHNS::WayPoint& pos, const double& predTime, std::vector<std::vector<PlannerHNS::WayPoint> >& paths)
+void LocalPlannerH::PredictObstacleTrajectory(PlannerHNS::RoadNetwork& map, const DetectedObject& obj, const double& predTime, std::vector<std::vector<PlannerHNS::WayPoint> >& paths)
 {
 	PlannerHNS::PlanningParams planningDefaultParams;
 	planningDefaultParams.rollOutNumber = 0;
-	planningDefaultParams.microPlanDistance = predTime*pos.v;
+	planningDefaultParams.microPlanDistance = predTime*obj.center.v;
+	if(planningDefaultParams.microPlanDistance > m_params.minFollowingDistance)
+		planningDefaultParams.microPlanDistance = m_params.minFollowingDistance;
 
-	planningDefaultParams.pathDensity = 0.5;
-	//PlannerHNS::Lane* pMapLane  = MappingHelpers::GetClosestLaneFromMapDirectionBased(pos, map, 3.0);
-	std::vector<PlannerHNS::Lane*> pMapLanes = MappingHelpers::GetClosestMultipleLanesFromMap(pos, map, 1.5);
+	planningDefaultParams.pathDensity = 1;
 
+	cout << "Pred Time: " << predTime << ", Object Speed: " <<obj.center.v << endl;
+	WayPoint* pClosestWP =  MappingHelpers::GetClosestWaypointFromMap(obj.center, map, obj.bDirection);
 	PlannerHNS::PlannerH planner;
-	std::vector<int> LanesIds;
-	std::vector< std::vector<PlannerHNS::WayPoint> >  rollOuts;
-	std::vector<std::vector<PlannerHNS::WayPoint> > generatedPath;
 
 	if(planningDefaultParams.microPlanDistance > 0)
 	{
-		for(unsigned int i = 0; i < pMapLanes.size(); i++)
-		{
-			std::vector<std::vector<PlannerHNS::WayPoint> > loca_generatedPath;
-			planner.PredictPlanUsingDP(pMapLanes.at(i), pos, planningDefaultParams.microPlanDistance, loca_generatedPath);
-			if(loca_generatedPath.size() > 0)
-				generatedPath.insert(generatedPath.begin(),loca_generatedPath.begin(), loca_generatedPath.end());
-		}
-	}
-
-//	planner.GenerateRunoffTrajectory(generatedPath, pos,
-//			planningDefaultParams.enableLaneChange,
-//			pos.v,
-//			planningDefaultParams.microPlanDistance,
-//			m_CarInfo.max_speed_forward,
-//			planningDefaultParams.minSpeed,
-//			planningDefaultParams.carTipMargin,
-//			planningDefaultParams.rollInMargin,
-//			planningDefaultParams.rollInSpeedFactor,
-//			planningDefaultParams.pathDensity,
-//			planningDefaultParams.rollOutDensity,
-//			planningDefaultParams.rollOutNumber,
-//			planningDefaultParams.smoothingDataWeight,
-//			planningDefaultParams.smoothingSmoothWeight,
-//			planningDefaultParams.smoothingToleranceError,
-//			planningDefaultParams.speedProfileFactor,
-//			planningDefaultParams.enableHeadingSmoothing,
-//			rollOuts);
-
-	if(generatedPath.size() > 0)
-	{
-		//path = rollOuts.at(0);
-		paths = generatedPath;
-
-//		PlanningHelpers::GenerateRecommendedSpeed(path,
-//				m_CarInfo.max_speed_forward,
-//				planningDefaultParams.speedProfileFactor);
-//		PlanningHelpers::SmoothSpeedProfiles(path, 0.15,0.35, 0.1);
-	}
-
-	if(pMapLanes.size() ==0 || paths.size() == 0)
-	{
-		paths.clear();
-		generatedPath.clear();
-	}
-	else
-	{
-		//std::cout << "------------------------------------------------" <<  std::endl;
-		//std::cout << "Predicted Trajectories for Distance : " <<  planningDefaultParams.microPlanDistance << std::endl;
+		WayPoint obd_center = obj.center;
+		obd_center.pos.a = pClosestWP->pos.a;
+		planner.PredictPlanUsingDP(obd_center, pClosestWP, planningDefaultParams.microPlanDistance, paths, false);
 		for(unsigned int j=0; j < paths.size(); j++)
 		{
-			if(paths.at(j).size()==0)
-				continue;
-
-			double timeDelay = 0;
-			double total_distance = 0;
-			paths.at(j).at(0).timeCost = 0;
-			paths.at(j).at(0).v = pos.v;
-			for(unsigned int i=1; i<paths.at(j).size(); i++)
-			{
-				paths.at(j).at(i).v = pos.v;
-				paths.at(j).at(i).pos.a = atan2(paths.at(j).at(i).pos.y - paths.at(j).at(i-1).pos.y, paths.at(j).at(i).pos.x - paths.at(j).at(i-1).pos.x);
-				total_distance += distance2points(paths.at(j).at(i).pos, paths.at(j).at(i-1).pos);
-				if(pos.v > 0.1 && total_distance > 0.1)
-					timeDelay = total_distance/pos.v;
-				paths.at(j).at(i).timeCost = timeDelay;
-			}
-
-			//std::cout << "ID : " <<  j << ", timeDelay : " << timeDelay << ", Distance : " << total_distance << std::endl;
+			PlanningHelpers::FixPathDensity(paths.at(j), planningDefaultParams.pathDensity);
+			PlanningHelpers::CalcAngleAndCost(paths.at(j));
 		}
 
-		//std::cout << "------------------------------------------------" <<  std::endl;
+		for(unsigned int j=0; j < paths.size(); j++)
+		{
+			if(paths.at(j).size() > 0)
+			{
+				double timeDelay = 0;
+				double total_distance = 0;
+				paths.at(j).at(0).timeCost = 0;
+				paths.at(j).at(0).v = obj.center.v;
+				for(unsigned int i=1; i<paths.at(j).size(); i++)
+				{
+					paths.at(j).at(i).v = obj.center.v;
+					total_distance += hypot(paths.at(j).at(i).pos.y- paths.at(j).at(i-1).pos.y, paths.at(j).at(i).pos.x- paths.at(j).at(i-1).pos.x);
+					if(obj.center.v > 0.1 && total_distance > 0.1)
+						timeDelay = total_distance/obj.center.v;
+					paths.at(j).at(i).timeCost = timeDelay;
+					if(total_distance > planningDefaultParams.microPlanDistance)
+						break;
+				}
+			}
+		}
 	}
 }
 
@@ -559,21 +463,37 @@ bool LocalPlannerH::CalculateIntersectionVelocities(std::vector<PlannerHNS::WayP
 	return bCollisionDetected;
 }
 
-bool LocalPlannerH::CalculateObstacleCosts(PlannerHNS::RoadNetwork& map, const PlannerHNS::VehicleState& vstatus, const std::vector<PlannerHNS::DetectedObject>& obj_list)
+void LocalPlannerH::CalculateMovingObstacleTrajectoriesCosts(PlannerHNS::RoadNetwork& map, const PlannerHNS::VehicleState& vstatus, const std::vector<PlannerHNS::DetectedObject>& obj_list, std::vector<DetectedObject>& future_objs)
 {
-	double predTime = PredictTimeCostForTrajectory(m_Path, vstatus, state);
-	m_PredictedPath.clear();
-	bool bObstacleDetected = false;
+	double predTime = PredictTimeCostForTrajectory(m_TotalPath.at(m_iCurrentTotalPathId), vstatus, state);
+	if(predTime > m_MaxCollisionPredictionTime)
+		predTime = m_MaxCollisionPredictionTime;
+
+
+	m_TotalPredictedPaths.clear();
+	future_objs.clear();
 	for(unsigned int i = 0; i < obj_list.size(); i++)
 	{
-		//std::vector<WayPoint> predPath;
-		PredictObstacleTrajectory(map, obj_list.at(i).center, 10.0, m_PredictedPath);
-		bool bObstacle = CalculateIntersectionVelocities(m_Path, m_PredictedPath, obj_list.at(i));
-		if(bObstacle)
-			bObstacleDetected = true;
-	}
+		if(obj_list.at(i).bVelocity && obj_list.at(i).center.v > 0.1)
+		{
+			m_PredictedPaths.clear();
+			PredictObstacleTrajectory(map, obj_list.at(i), predTime, m_PredictedPaths);
+			m_TotalPredictedPaths.push_back(m_PredictedPaths);
 
-	return bObstacleDetected;
+			DetectedObject obj;
+			obj = obj_list.at(i);
+			for(unsigned int j=0; j<m_PredictedPaths.size(); j++)
+			{
+				for(unsigned int k=0; k<m_PredictedPaths.at(j).size(); k++)
+				{
+					obj.contour.push_back(m_PredictedPaths.at(j).at(k).pos);
+				}
+			}
+			future_objs.push_back(obj);
+		}
+		else
+			future_objs.push_back(obj_list.at(i));
+	}
 }
 
  void LocalPlannerH::UpdateCurrentLane(PlannerHNS::RoadNetwork& map, const double& search_distance)
@@ -843,6 +763,8 @@ bool LocalPlannerH::CalculateObstacleCosts(PlannerHNS::RoadNetwork& map, const P
 		const bool& bLive)
 {
 
+	 m_params.minFollowingDistance = m_InitialFollowingDistance + vehicleState.speed*1.5;
+
 	 if(!bLive)
 		 SimulateOdoPosition(dt, vehicleState);
 
@@ -850,11 +772,13 @@ bool LocalPlannerH::CalculateObstacleCosts(PlannerHNS::RoadNetwork& map, const P
 
 	ExtractHorizonAndCalculateRecommendedSpeed();
 
+	CalculateMovingObstacleTrajectoriesCosts(map, vehicleState, obj_list, m_PredictedTrajectoryObstacles);
+
 	timespec t;
 	UtilityH::GetTickCount(t);
 	TrajectoryCost tc = m_TrajectoryCostsCalculatotor.DoOneStep(m_RollOuts, m_TotalPath, state,
 			m_pCurrentBehaviorState->GetCalcParams()->iCurrSafeTrajectory, m_pCurrentBehaviorState->GetCalcParams()->iCurrSafeLane, *m_pCurrentBehaviorState->m_pParams,
-			m_CarInfo,vehicleState, obj_list);
+			m_CarInfo,vehicleState, m_PredictedTrajectoryObstacles);
 	m_CostCalculationTime = UtilityH::GetTimeDiffNow(t);
 
 
@@ -870,33 +794,6 @@ bool LocalPlannerH::CalculateObstacleCosts(PlannerHNS::RoadNetwork& map, const P
 	m_RollOutsGenerationTime = UtilityH::GetTimeDiffNow(t);
 
 	beh.maxVelocity = UpdateVelocityDirectlyToTrajectory(beh, vehicleState, dt);
-
-/**
- * Usage of predictive planning
- */
-//	timespec predictionTime;
-//	UtilityH::GetTickCount(predictionTime);
-//	if(UtilityH::GetTimeDiffNow(m_PredictionTimer) > 0.5 || beh.bNewPlan)
-//	{
-//		CalculateObstacleCosts(map, vehicleState, obj_list);
-//		m_PredictionTime = UtilityH::GetTimeDiffNow(predictionTime);
-//	}
-//	bool bCollision = false;
-//	int wp_id = -1;
-//	for(unsigned int i=0; i < m_Path.size(); i++)
-//	{
-//		if(m_Path.at(i).collisionCost > 0)
-//		{
-//			bCollision = true;
-//			wp_id = i;
-//			beh.maxVelocity = m_Path.at(i).v;//PlannerHNS::PlanningHelpers::GetVelocityAhead(m_Path, state, 1.5*vehicleState.speed*3.6);
-//			break;
-//		}
-//	}
-//	std::cout << "------------------------------------------------" <<  std::endl;
-//	std::cout << "Max Velocity = " << beh.maxVelocity << ", New Plan : " << beh.bNewPlan <<  std::endl;
-//	std::cout << "Collision = " << bCollision << ", @ WayPoint : " << wp_id <<  std::endl;
-//	std::cout << "------------------------------------------------" <<  std::endl;
 
 	return beh;
  }

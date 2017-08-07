@@ -178,6 +178,10 @@ protected:
   	visualization_msgs::MarkerArray m_PredictedTrajectoriesDummy;
   	visualization_msgs::MarkerArray m_PredictedTrajectoriesActual;
   	visualization_msgs::MarkerArray m_AllConnectedLines;
+  	visualization_msgs::MarkerArray m_ForwardPredictionMarkersDummy;
+  	visualization_msgs::MarkerArray m_ForwardPredictionMarkers;
+  	visualization_msgs::MarkerArray m_OthersForwardPredictionMarkers;
+  	visualization_msgs::MarkerArray m_OthersForwardPredictionMarkersDummy;
 
   	int m_nDetectedObjRepresentations;
   	int m_nDummyObjPerRep;
@@ -208,6 +212,8 @@ protected:
 
 	ros::Publisher pub_ConnectedPointsRviz;
 
+	ros::Publisher pub_OthersForwardPredictionRviz;
+	ros::Publisher pub_ForwardPredictionRviz;
 	ros::Publisher pub_DetectedPolygonsRviz;
 	ros::Publisher pub_TrackedObstaclesRviz;
 	ros::Publisher pub_LocalTrajectoriesRviz;

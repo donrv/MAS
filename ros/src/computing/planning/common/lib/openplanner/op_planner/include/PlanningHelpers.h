@@ -79,8 +79,6 @@ public:
 
 	static int GetClosestNextPointIndexFastV2(const std::vector<WayPoint>& trajectory, const WayPoint& p, const int& prevIndex = 0);
 
-	static int GetClosestNextPointIndexDirection_(const std::vector<WayPoint>& trajectory, const WayPoint& p, const int& prevIndex = 0);
-
 	static int GetClosestNextPointIndexDirectionFast(const std::vector<WayPoint>& trajectory, const WayPoint& p, const int& prevIndex = 0);
 
 	static int GetClosestNextPointIndexDirectionFastV2(const std::vector<WayPoint>& trajectory, const WayPoint& p, const int& prevIndex = 0);
