@@ -387,6 +387,48 @@ bool TrajectoryCosts::ValidateRollOutsInput(const vector<vector<vector<WayPoint>
 }
 
 
+bool TrajectoryCosts::CalculateIntersectionVelocities(const std::vector<PlannerHNS::WayPoint>& path, const PlannerHNS::DetectedObject& obj, const WayPoint& currState,const CAR_BASIC_INFO& carInfo, WayPoint& collisionPoint)
+{
+	bool bCollisionDetected = false;
+	m_CollisionPoints.clear();
+
+	for(unsigned int k = 0; k < obj.predTrajectories.size(); k++)
+	{
+		for(unsigned int j = 0; j < obj.predTrajectories.at(k).size(); j++)
+		{
+			bool bCollisionFound =false;
+			for(unsigned int i = 0; i < path.size(); i++)
+			{
+				if(path.at(i).timeCost > 0.0)
+				{
+					double collision_distance = hypot(path.at(i).pos.x-obj.predTrajectories.at(k).at(j).pos.x, path.at(i).pos.y-obj.predTrajectories.at(k).at(j).pos.y);
+					double contact_distance = hypot(currState.pos.x - path.at(i).pos.x,currState.pos.y - path.at(i).pos.y);
+					if(collision_distance <= carInfo.width  && fabs(path.at(i).timeCost - obj.predTrajectories.at(k).at(j).timeCost)<3.0)
+					{
+						//m_CollisionPoints.push_back(path.at(i));
+						collisionPoint = path.at(i);
+						return true;
+//						double a = UtilityHNS::UtilityH::AngleBetweenTwoAnglesPositive(path.at(i).pos.a, obj.predTrajectories.at(k).at(j).pos.a)*RAD2DEG;
+//						if(a < 10)
+//							path.at(i).v = obj.center.v;
+//						else
+//							path.at(i).v = 0;
+//						//obj.predTrajectories.at(k).at(j).collisionCost = 1;
+						bCollisionFound = true;
+						bCollisionDetected = true;
+						break;
+					}
+				}
+			}
+
+			if(bCollisionFound)
+				break;
+		}
+	}
+
+	return bCollisionDetected;
+}
+
 
 
 

@@ -33,6 +33,7 @@ public:
 	PlanningParams m_Params;
 	PolygonShape m_SafetyBorder;
 	vector<WayPoint> m_AllContourPoints;
+	vector<WayPoint> m_CollisionPoints;
 	double m_WeightPriority;
 	double m_WeightTransition;
 	double m_WeightLong;
@@ -48,6 +49,7 @@ private:
 	void NormalizeCosts(vector<TrajectoryCost>& trajectoryCosts);
 	void CalculateLateralAndLongitudinalCosts(vector<TrajectoryCost>& trajectoryCosts, const vector<vector<vector<WayPoint> > >& rollOuts, const vector<vector<WayPoint> >& totalPaths, const WayPoint& currState, const vector<WayPoint>& contourPoints, const PlanningParams& params, const CAR_BASIC_INFO& carInfo, const VehicleState& vehicleState);
 	void CalculateTransitionCosts(vector<TrajectoryCost>& trajectoryCosts, const int& currTrajectoryIndex, const PlanningParams& params);
+	bool CalculateIntersectionVelocities(const std::vector<WayPoint>& path, const DetectedObject& obj, const WayPoint& currState,const CAR_BASIC_INFO& carInfo, WayPoint& collisionPoint);
 
 };
 

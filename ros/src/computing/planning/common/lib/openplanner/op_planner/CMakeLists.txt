@@ -39,6 +39,7 @@ set(PLANNERH_SRC
 		src/RSPlanner.cpp
 		src/MatrixOperations.cpp
 		src/TrajectoryCosts.cpp
+		src/TrajectoryPrediction.cpp
 		src/HMIStateMachine.cpp
 		src/PlannerH.cpp
 		src/geo_pos_conv.cpp

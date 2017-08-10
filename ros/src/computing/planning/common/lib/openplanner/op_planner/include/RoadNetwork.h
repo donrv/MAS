@@ -720,6 +720,7 @@ public:
 	WayPoint predicted_center;
 	STATE_TYPE predicted_behavior;
 	std::vector<GPSPoint> contour;
+	std::vector<std::vector<WayPoint> > predTrajectories;
 	WayPoint* pClosestWaypoint;
 	double w;
 	double l;

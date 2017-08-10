@@ -91,13 +91,13 @@ void RosHelpers::CreateOthersSpeedPredictionsGradients(PlannerHNS::LocalPlannerH
 	double red_value = 0;
 	double green_value = 0;
 	int nCounterIds = 0;
-	for(unsigned int k=0; k < localPlanner.m_TotalPredictedPaths.size(); k++)
+	for(unsigned int k=0; k < localPlanner.m_PredictedTrajectoryObstacles.size(); k++)
 	{
-		for(unsigned int j=0; j < localPlanner.m_TotalPredictedPaths.at(k).size(); j++)
+		for(unsigned int j=0; j < localPlanner.m_PredictedTrajectoryObstacles.at(k).predTrajectories.size(); j++)
 		{
-			for(unsigned int i=0; i < localPlanner.m_TotalPredictedPaths.at(k).at(j).size(); i++)
+			for(unsigned int i=0; i < localPlanner.m_PredictedTrajectoryObstacles.at(k).predTrajectories.at(j).size(); i++)
 			{
-				pWP = &localPlanner.m_TotalPredictedPaths.at(k).at(j).at(i);
+				pWP = &localPlanner.m_PredictedTrajectoryObstacles.at(k).predTrajectories.at(j).at(i);
 				if(pWP->timeCost < 0.1) continue;
 				red_value = 2.0 - pWP->timeCost/20.0;
 				if(red_value < 0) red_value = 0;
