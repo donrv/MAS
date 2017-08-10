@@ -61,8 +61,8 @@ way_planner_core::way_planner_core()
 	m_pCurrGoal = 0;
 	m_iCurrentGoalIndex = 0;
 	m_bKmlMap = false;
-	m_NextAction = PlannerHNS::START_ACTION;
-	m_PrevAction = PlannerHNS::START_ACTION;
+	m_NextAction = PlannerHNS::WAITING_ACTION;
+	m_PrevAction = PlannerHNS::WAITING_ACTION;
 	m_SlowDownFactor = 1.0;
 	//bStartPos = false;
 	//bGoalPos = false;
@@ -373,10 +373,10 @@ bool way_planner_core::GenerateGlobalPlan(PlannerHNS::WayPoint& startPoint, Plan
 		if(m_NextAction == PlannerHNS::STOP_ACTION)
 		{
 			generatedTotalPaths.clear();
-			ret = m_PlannerH.PlanUsingDPRandom(startPoint, 30, m_Map, generatedTotalPaths);
+			ret = m_PlannerH.PlanUsingDPRandom(startPoint, HIM_STOP_ACTION_DISTANCE, m_Map, generatedTotalPaths);
 			m_params.bEnableReplanning = false;
 		}
-		else
+		else if(m_NextAction != PlannerHNS::WAITING_ACTION)
 		{
 			ret = m_PlannerH.PlanUsingDP(startPoint, goalPoint,
 					MAX_GLOBAL_PLAN_DISTANCE, m_params.bEnableLaneChange,
@@ -607,10 +607,45 @@ bool way_planner_core::HMI_DoOneStep()
 	if(m_GoalsPos.size() > 1)
 		startPoint = m_CurrentPose;
 
+
+	bool bMissionCompleted = false;
+	if(m_GeneratedTotalPaths.size() > 0 && m_GeneratedTotalPaths.at(0).size() > 3)
+	{
+		PlannerHNS::RelativeInfo info;
+		bool ret = PlannerHNS::PlanningHelpers::GetRelativeInfoRange(m_GeneratedTotalPaths, m_CurrentPose, 0.75, info);
+		if(ret == true && info.iGlobalPath >= 0 &&  info.iGlobalPath < m_GeneratedTotalPaths.size() && info.iFront > 0 && info.iFront < m_GeneratedTotalPaths.at(info.iGlobalPath).size())
+		{
+			double remaining_distance =    m_GeneratedTotalPaths.at(info.iGlobalPath).at(m_GeneratedTotalPaths.at(info.iGlobalPath).size()-1).cost - (m_GeneratedTotalPaths.at(info.iGlobalPath).at(info.iFront).cost + info.to_front_distance);
+			if(remaining_distance <= ARRIVE_DISTANCE)
+			{
+				bMissionCompleted = true;
+			}
+		}
+	}
+
 	PlannerHNS::WayPoint* currOptions = 0;
 	RosHelpers::FindIncommingBranches(m_GeneratedTotalPaths,startPoint, min_distance, branches, currOptions);
-	if(branches.size() > 0)
+
+	if(bMissionCompleted)
 	{
+		HMI_MSG msg;
+		msg.type = OPTIONS_MSG;
+		msg.options.clear();
+		msg.options.push_back(PlannerHNS::DESTINATION_REACHED);
+		msg.next_destination_id = m_iCurrentGoalIndex;
+		msg.destinations.clear();
+		for(unsigned int iDes = 0; iDes < m_GoalsNames.size(); iDes ++)
+		{
+//			if(iDes == m_iCurrentGoalIndex)
+//				msg.destinations.push_back(m_GoalsNames.at(iDes) + "_Reached");
+//			else
+				msg.destinations.push_back(m_GoalsNames.at(iDes));
+		}
+		m_SocketServer.SendMSG(msg);
+	}
+	else if(branches.size() > 0)
+	{
+
 		HMI_MSG msg;
 		msg.type = OPTIONS_MSG;
 		msg.options.clear();
@@ -666,6 +701,22 @@ bool way_planner_core::HMI_DoOneStep()
 				m_NextAction = PlannerHNS::START_ACTION;
 				m_params.bEnableReplanning = true;
 				std::cout << "GO Go Go  Action ! " << inc_msg.options.at(j) <<  std::endl;
+
+				if(m_GeneratedTotalPaths.size() > 0 && m_GeneratedTotalPaths.at(0).size() > 3 && m_VehicleState.speed == 0)
+				{
+					PlannerHNS::RelativeInfo info;
+					bool ret = PlannerHNS::PlanningHelpers::GetRelativeInfoRange(m_GeneratedTotalPaths, m_CurrentPose, 0.75, info);
+					if(ret == true && info.iGlobalPath >= 0 &&  info.iGlobalPath < m_GeneratedTotalPaths.size() && info.iFront > 0 && info.iFront < m_GeneratedTotalPaths.at(info.iGlobalPath).size())
+					{
+						double remaining_distance =    m_GeneratedTotalPaths.at(info.iGlobalPath).at(m_GeneratedTotalPaths.at(info.iGlobalPath).size()-1).cost - (m_GeneratedTotalPaths.at(info.iGlobalPath).at(info.iFront).cost + info.to_front_distance);
+						if(remaining_distance <= REPLANNING_DISTANCE)
+						{
+							if(m_GoalsPos.size() > 0)
+								m_iCurrentGoalIndex = (m_iCurrentGoalIndex + 1) % m_GoalsPos.size();
+							std::cout << "Current Goal Index = " << m_iCurrentGoalIndex << std::endl << std::endl;
+						}
+					}
+				}
 
 			}
 			else if(inc_msg.options.at(j) == PlannerHNS::STOP_ACTION && m_NextAction != PlannerHNS::STOP_ACTION)
@@ -812,7 +863,7 @@ void way_planner_core::PlannerMainLoop()
 		{
 			if(m_GeneratedTotalPaths.size() > 0 && m_GeneratedTotalPaths.at(0).size() > 3)
 			{
-				if(m_params.bEnableReplanning && m_PrevAction != PlannerHNS::STOP_ACTION)
+				if(m_params.bEnableReplanning && m_PrevAction != PlannerHNS::STOP_ACTION && !m_params.bEnableHMI)
 				{
 					PlannerHNS::RelativeInfo info;
 					bool ret = PlannerHNS::PlanningHelpers::GetRelativeInfoRange(m_GeneratedTotalPaths, m_CurrentPose, 0.75, info);

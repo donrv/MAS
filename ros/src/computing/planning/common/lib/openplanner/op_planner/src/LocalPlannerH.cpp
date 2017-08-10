@@ -487,7 +487,13 @@ void LocalPlannerH::InitPolygons()
 	unsigned int point_index = 0;
 	double critical_long_front_distance = 2.0;
 
-	if(beh.state == TRAFFIC_LIGHT_STOP_STATE || beh.state == STOP_SIGN_STOP_STATE || beh.state == STOP_SIGN_WAIT_STATE || beh.state == TRAFFIC_LIGHT_WAIT_STATE)
+	if(m_Path.size() <= 5)
+	{
+		double target_velocity = 0;
+		for(unsigned int i = 0; i < m_Path.size(); i++)
+			m_Path.at(i).v = target_velocity;
+	}
+	else if(beh.state == TRAFFIC_LIGHT_STOP_STATE || beh.state == STOP_SIGN_STOP_STATE || beh.state == STOP_SIGN_WAIT_STATE || beh.state == TRAFFIC_LIGHT_WAIT_STATE)
 	{
 		PlanningHelpers::GetFollowPointOnTrajectory(m_Path, info, beh.stopDistance - critical_long_front_distance, point_index);
 
@@ -508,7 +514,6 @@ void LocalPlannerH::InitPolygons()
 	}
 	else if(beh.state == FOLLOW_STATE)
 	{
-
 		double targe_acceleration = -pow(CurrStatus.speed, 2)/(2.0*(beh.followDistance - critical_long_front_distance));
 		if(targe_acceleration <= 0 &&  targe_acceleration > m_CarInfo.max_deceleration/2.0)
 		{
