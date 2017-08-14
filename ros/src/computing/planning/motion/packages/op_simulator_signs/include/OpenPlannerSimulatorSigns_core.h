@@ -35,7 +35,7 @@
 
 // ROS includes
 #include <ros/ros.h>
-#include <runtime_manager/traffic_light.h>
+//#include <runtime_manager/traffic_light.h>
 
 #include <geometry_msgs/Vector3Stamped.h>
 #include <geometry_msgs/PoseWithCovarianceStamped.h>
