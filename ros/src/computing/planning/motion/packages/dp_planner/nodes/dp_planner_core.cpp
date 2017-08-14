@@ -800,7 +800,7 @@ void PlannerX::callbackGetTrafficLightStatus(const runtime_manager::traffic_ligh
 		m_CurrLightStatus = PlannerHNS::RED_LIGHT;
 }
 
-void PlannerX::callbackGetTrafficLightSignals(const road_wizard::Signals& msg)
+void PlannerX::callbackGetTrafficLightSignals(const autoware_msgs::Signals& msg)
 {
 	//std::cout << "Received Traffic Light Signals : " << msg.Signals.size() << std::endl;
 	m_CurrTrafficLight.clear();

@@ -50,8 +50,8 @@
 #include <std_msgs/Bool.h>
 #include <std_msgs/Float32.h>
 
-#include <road_wizard/Signals.h>
-#include <road_wizard/ExtractedPosition.h>
+#include <autoware_msgs/Signals.h>
+#include <autoware_msgs/ExtractedPosition.h>
 #include <geometry_msgs/PoseArray.h>
 #include <RoadNetwork.h>
 #include <MappingHelpers.h>
@@ -102,8 +102,8 @@ public:
 class OpenPlannerSimulatorSigns
 {
 public:
-	road_wizard::Signals m_FirstSignals;
-	road_wizard::Signals m_SecondSignals;
+	autoware_msgs::Signals m_FirstSignals;
+	autoware_msgs::Signals m_SecondSignals;
 
 protected:
 	ros::NodeHandle nh;

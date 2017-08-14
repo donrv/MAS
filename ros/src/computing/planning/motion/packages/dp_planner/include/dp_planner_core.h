@@ -40,7 +40,7 @@
 #include <geometry_msgs/PoseArray.h>
 #include <nav_msgs/Odometry.h>
 #include <nav_msgs/OccupancyGrid.h>
-#include <road_wizard/Signals.h>
+#include <autoware_msgs/Signals.h>
 #include <runtime_manager/traffic_light.h>
 #include <tf/transform_broadcaster.h>
 #include <tf/transform_listener.h>
@@ -262,7 +262,7 @@ protected:
 	void callbackGetRobotOdom(const nav_msgs::OdometryConstPtr& msg);
 	void callbackGetEmergencyStop(const std_msgs::Int8& msg);
 	void callbackGetTrafficLightStatus(const runtime_manager::traffic_light& msg);
-	void callbackGetTrafficLightSignals(const road_wizard::Signals& msg);
+	void callbackGetTrafficLightSignals(const autoware_msgs::Signals& msg);
 	void callbackGetOutsideControl(const std_msgs::Int8& msg);
 	void callbackGetAStarPath(const autoware_msgs::LaneArrayConstPtr& msg);
 	void callbackGetWayPlannerPath(const autoware_msgs::LaneArrayConstPtr& msg);

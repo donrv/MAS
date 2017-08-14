@@ -55,7 +55,7 @@ OpenPlannerSimulatorSigns::OpenPlannerSimulatorSigns()
 
 	for(unsigned int i = 0; i < m_Params.firstSignsIds.size(); i++)
 	{
-		road_wizard::ExtractedPosition s;
+		autoware_msgs::ExtractedPosition s;
 		s.signalId = m_Params.firstSignsIds.at(i);
 		s.type = 1;
 		m_FirstSignals.Signals.push_back(s);
@@ -63,14 +63,14 @@ OpenPlannerSimulatorSigns::OpenPlannerSimulatorSigns()
 
 	for(unsigned int i=0; i < m_Params.secondSignsIds.size(); i++)
 	{
-		road_wizard::ExtractedPosition s;
+		autoware_msgs::ExtractedPosition s;
 		s.signalId = m_Params.secondSignsIds.at(i);
 		s.type = 0;
 		m_SecondSignals.Signals.push_back(s);
 	}
 
 
-	pub_trafficLights 	= nh.advertise<road_wizard::Signals>("roi_signal",1);
+	pub_trafficLights 	= nh.advertise<autoware_msgs::Signals>("roi_signal",1);
 
 	UtilityHNS::UtilityH::GetTickCount(m_Timer);
 	m_CurrLightState = PlannerHNS::GREEN_LIGHT;
@@ -161,7 +161,7 @@ void OpenPlannerSimulatorSigns::MainLoop()
 			}
 		}
 
-		road_wizard::Signals all_signals;
+		autoware_msgs::Signals all_signals;
 		all_signals.Signals.insert(all_signals.Signals.end(), m_FirstSignals.Signals.begin(), m_FirstSignals.Signals.end());
 		all_signals.Signals.insert(all_signals.Signals.end(), m_SecondSignals.Signals.begin(), m_SecondSignals.Signals.end());
 
