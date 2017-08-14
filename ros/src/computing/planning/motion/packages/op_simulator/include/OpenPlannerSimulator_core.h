@@ -41,7 +41,6 @@
 #include <geometry_msgs/PoseWithCovarianceStamped.h>
 #include <geometry_msgs/PoseStamped.h>
 #include <nav_msgs/Odometry.h>
-#include <road_wizard/Signals.h>
 #include <tf/transform_broadcaster.h>
 #include <tf/transform_listener.h>
 #include <tf/tf.h>
@@ -55,6 +54,7 @@
 #include <visualization_msgs/InteractiveMarkerPose.h>
 #include <std_msgs/Bool.h>
 #include <std_msgs/Float32.h>
+#include "autoware_msgs/Signals.h"
 #include "autoware_msgs/CloudCluster.h"
 #include "autoware_msgs/CloudClusterArray.h"
 #include "SimpleTracker.h"
@@ -142,7 +142,7 @@ protected:
 	void callbackGetInitPose(const geometry_msgs::PoseWithCovarianceStampedConstPtr &msg);
 	void callbackGetGoalPose(const geometry_msgs::PoseStampedConstPtr &msg);
 	void callbackGetCloudClusters(const autoware_msgs::CloudClusterArrayConstPtr& msg);
-	void callbackGetTrafficLightSignals(const road_wizard::Signals& msg);
+	void callbackGetTrafficLightSignals(const autoware_msgs::Signals& msg);
 
 public:
 	OpenPlannerSimulator();

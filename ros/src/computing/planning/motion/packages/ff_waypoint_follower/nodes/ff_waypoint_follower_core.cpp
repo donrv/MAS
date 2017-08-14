@@ -143,7 +143,7 @@ FFSteerControl::FFSteerControl()
 	sub_initialpose 		= nh.subscribe("/initialpose", 		100, &FFSteerControl::callbackGetInitPose, 			this);
 
   	if(m_CmdParams.statusSource != SIMULATION_STATUS)
-  		sub_current_pose 	= nh.subscribe("/current_pose", 		100, &FFSteerControl::callbackGetCurrentPose, 		this);
+  		sub_current_pose 	= nh.subscribe("/ndt_pose", 		100, &FFSteerControl::callbackGetCurrentPose, 		this);
 
   	if(m_CmdParams.statusSource == ROBOT_STATUS)
 		sub_robot_odom			= nh.subscribe("/odom",				100, &FFSteerControl::callbackGetRobotOdom, 		this);
@@ -205,6 +205,8 @@ void FFSteerControl::ReadParamFromLaunchFile(PlannerHNS::CAR_BASIC_INFO& m_CarIn
 
 FFSteerControl::~FFSteerControl()
 {
+	UtilityHNS::DataRW::WriteLogData(UtilityHNS::UtilityH::GetHomeDirectory()+UtilityHNS::DataRW::LoggingMainfolderName, "PathData", "x,y,z,a,v,", m_PathDataToLog);
+
 #ifdef ENABLE_ZMP_LIBRARY_LINK
 	if(m_pComm)
 		delete m_pComm;
@@ -444,8 +446,7 @@ void FFSteerControl::PlannerMainLoop()
 		m_pComm->GoLive(true);
 #endif
 
-	vector<PlannerHNS::WayPoint> path;
-	PlannerHNS::WayPoint p2;
+	//vector<PlannerHNS::WayPoint> path;
 	double totalDistance = 0;
 
 	while (ros::ok())
@@ -632,57 +633,52 @@ void FFSteerControl::PlannerMainLoop()
 		 if (m_CmdParams.iMapping == 1 && bNewCurrentPos == true)
 		 {
 			 bNewCurrentPos = false;
-			double _d = hypot(m_CurrentPos.pos.y - p2.pos.y, m_CurrentPos.pos.x - p2.pos.x);
+			double _d = hypot(m_CurrentPos.pos.y - m_prev_curr_pose.pos.y, m_CurrentPos.pos.x - m_prev_curr_pose.pos.x);
 			if(_d > m_CmdParams.recordDensity)
 			{
-				p2 = m_CurrentPos;
+				m_prev_curr_pose = m_CurrentPos;
 
-				if(path.size() > 0)
+				if(m_PathDataToLog.size() > 0)
 					totalDistance += _d;
 
-				m_CurrentPos.pos.lat = m_CurrentPos.pos.x;
-				m_CurrentPos.pos.lon = m_CurrentPos.pos.y;
-				m_CurrentPos.pos.alt = m_CurrentPos.pos.z;
-				m_CurrentPos.pos.dir = m_CurrentPos.pos.a;
+				std::ostringstream dataLine;
 
-				m_CurrentPos.laneId = 1;
-				m_CurrentPos.id = path.size()+1;
-				if(path.size() > 0)
-				{
-					path.at(path.size()-1).toIds.push_back(m_CurrentPos.id);
-					m_CurrentPos.fromIds.clear();
-					m_CurrentPos.fromIds.push_back(path.at(path.size()-1).id);
-				}
+				dataLine << m_CurrentPos.pos.x << ",";
+				dataLine << m_CurrentPos.pos.y << ",";
+				dataLine << m_CurrentPos.pos.z<< ",";
+				dataLine << m_CurrentPos.pos.a<< ",";
+				dataLine << m_CurrentPos.v<< ",";
 
-				path.push_back(m_CurrentPos);
+				m_PathDataToLog.push_back(dataLine.str());
 				std::cout << "Record One Point To Path: " <<  m_CurrentPos.pos.ToString() << std::endl;
 			}
 
-			if(totalDistance > m_CmdParams.recordDistance || m_bOutsideControl != 0)
-			{
-				PlannerHNS::RoadNetwork roadMap;
-				PlannerHNS::RoadSegment segment;
-
-				segment.id = 1;
-
-				PlannerHNS::Lane lane;
-				lane.id = 1;
-				lane.num = 0;
-				lane.roadId = 1;
-				lane.points = path;
-
-				segment.Lanes.push_back(lane);
-				roadMap.roadSegments.push_back(segment);
-
-				ostringstream fileName;
-				fileName << UtilityHNS::UtilityH::GetHomeDirectory()+UtilityHNS::DataRW::LoggingMainfolderName;
-				fileName << UtilityHNS:: UtilityH::GetFilePrefixHourMinuteSeconds();
-				fileName << "_RoadNetwork.kml";
-//				string kml_templateFilePath = UtilityHNS::UtilityH::GetHomeDirectory()+UtilityHNS::DataRW::LoggingMainfolderName + UtilityHNS::DataRW::KmlMapsFolderName+"PlannerX_MapTemplate.kml";
-//				PlannerHNS::MappingHelpers::WriteKML(fileName.str(),kml_templateFilePath , roadMap);
-//				std::cout << " Mapped Saved Successfuly ... " << std::endl;
-				break;
-			}
+//			if(totalDistance > m_CmdParams.recordDistance || m_bOutsideControl != 0)
+//			{
+////				PlannerHNS::RoadNetwork roadMap;
+////				PlannerHNS::RoadSegment segment;
+////
+////				segment.id = 1;
+////
+////				PlannerHNS::Lane lane;
+////				lane.id = 1;
+////				lane.num = 0;
+////				lane.roadId = 1;
+////				lane.points = path;
+////
+////				segment.Lanes.push_back(lane);
+////				roadMap.roadSegments.push_back(segment);
+////
+////				ostringstream fileName;
+////				fileName << UtilityHNS::UtilityH::GetHomeDirectory()+UtilityHNS::DataRW::LoggingMainfolderName;
+////				fileName << UtilityHNS:: UtilityH::GetFilePrefixHourMinuteSeconds();
+////				fileName << "_RoadNetwork.kml";
+////				string kml_templateFilePath = UtilityHNS::UtilityH::GetHomeDirectory()+UtilityHNS::DataRW::LoggingMainfolderName + UtilityHNS::DataRW::KmlMapsFolderName+"PlannerX_MapTemplate.kml";
+////				PlannerHNS::MappingHelpers::WriteKML(fileName.str(),kml_templateFilePath , roadMap);
+////				std::cout << " Mapped Saved Successfuly ... " << std::endl;
+//
+//				break;
+//			}
 		 }
 
 		loop_rate.sleep();

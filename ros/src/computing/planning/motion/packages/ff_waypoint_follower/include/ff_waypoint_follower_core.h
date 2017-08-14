@@ -108,6 +108,7 @@ protected:
 	int m_bOutsideControl;
 
 
+
 	PlannerHNS::WayPoint m_InitPos;
 	bool bInitPos;
 	PlannerHNS::WayPoint m_CurrentPos;
@@ -137,6 +138,8 @@ protected:
 	PlannerHNS::PlanningParams m_PlanningParams;
 
 	SimulationNS::TrajectoryFollower m_PredControl;
+	std::vector<string> m_PathDataToLog;
+	PlannerHNS::WayPoint m_prev_curr_pose;
 
 	ros::NodeHandle nh;
 

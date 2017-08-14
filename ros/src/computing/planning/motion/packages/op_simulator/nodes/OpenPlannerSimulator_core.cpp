@@ -476,7 +476,7 @@ void OpenPlannerSimulator::ConvertFromAutowareCloudClusterObstaclesToPlannerH(co
 	nContourPoints =  nPoints;
 }
 
-void OpenPlannerSimulator::callbackGetTrafficLightSignals(const road_wizard::Signals& msg)
+void OpenPlannerSimulator::callbackGetTrafficLightSignals(const autoware_msgs::Signals& msg)
 {
 //	std::cout << "Received Traffic Light Signals : " << msg.Signals.size() << std::endl;
 	m_CurrTrafficLight.clear();
