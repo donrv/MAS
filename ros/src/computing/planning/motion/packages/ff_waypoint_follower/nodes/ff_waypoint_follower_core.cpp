@@ -205,7 +205,7 @@ void FFSteerControl::ReadParamFromLaunchFile(PlannerHNS::CAR_BASIC_INFO& m_CarIn
 
 FFSteerControl::~FFSteerControl()
 {
-	UtilityHNS::DataRW::WriteLogData(UtilityHNS::UtilityH::GetHomeDirectory()+UtilityHNS::DataRW::LoggingMainfolderName, "PathData", "x,y,z,a,v,", m_PathDataToLog);
+	UtilityHNS::DataRW::WriteLogData(UtilityHNS::UtilityH::GetHomeDirectory()+UtilityHNS::DataRW::LoggingMainfolderName, "PathData_12", "x,y,z,a,v,", m_PathDataToLog);
 
 #ifdef ENABLE_ZMP_LIBRARY_LINK
 	if(m_pComm)

@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2015, Nagoya University
+ *  Copyright (c) 2017, Nagoya University
  *  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
@@ -28,18 +28,32 @@
  *  OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-// ROS Includes
 #include <ros/ros.h>
+#include "AlternativeVisualizer.h"
+#include "MainWindowWrapper.h"
 
-// User defined includes
-#include "pure_pursuit_core.h"
+using namespace  Graphics;
 
 int main(int argc, char **argv)
 {
-  ros::init(argc, argv, "pure_pursuit");
-  waypoint_follower::PurePursuitNode ppn;
+	ros::init(argc, argv, "testing_ui");
 
-  ppn.run();
+	DrawObjBase* pSimulator =  0;
+	pSimulator = new AlternativeVisualizer();
 
-  return 0;
+
+	WindowParams pms;
+	DisplayParams dpms;
+	dpms.centerRotX = 0;
+	dpms.centerRotY = 0;
+	dpms.translateX = 0;
+	dpms.translateY = 0;
+	MainWindowWrapper wrapper(pSimulator);
+	wrapper.UpdateParams(pms, dpms);
+
+	ros::NodeHandle nh;
+
+	wrapper.InitOpenGLWindow(argc, argv);
+
+	return 0;
 }

@@ -75,11 +75,23 @@ void CommandData::reset()
 }
 
 static CommandData command_data;
+#define ENABLE_VELOCITY_ONLY_TEST 1
 
 static void twistCMDCallback(const geometry_msgs::TwistStamped& msg)
 {
-  command_data.linear_x = msg.twist.linear.x;
-  command_data.angular_z = msg.twist.angular.z;
+	if(msg.twist.linear.x - command_data.linear_x > 4)
+		command_data.linear_x += 1;
+	else if(msg.twist.linear.x - command_data.linear_x < -4)
+		command_data.linear_x -= 1;
+
+	if(ENABLE_VELOCITY_ONLY_TEST == 1)
+		command_data.linear_x = msg.twist.linear.x;
+	else
+	{
+		command_data.linear_x = msg.twist.linear.x;
+		command_data.angular_z = msg.twist.angular.z;
+	}
+  //std::cout << "Sending Twist Command Data To ZMP PC !!" << std::endl;
 }
 
 static void modeCMDCallback(const tablet_socket_msgs::mode_cmd& mode)
@@ -103,7 +115,8 @@ static void accellCMDCallback(const autoware_msgs::accel_cmd& accell)
 
 static void steerCMDCallback(const autoware_msgs::steer_cmd& steer)
 {
-  command_data.steerValue = steer.steer;
+	if(ENABLE_VELOCITY_ONLY_TEST == 0)
+		command_data.steerValue = steer.steer;
 }
 
 static void brakeCMDCallback(const autoware_msgs::brake_cmd &brake)
@@ -113,8 +126,17 @@ static void brakeCMDCallback(const autoware_msgs::brake_cmd &brake)
 
 static void ctrlCMDCallback(const autoware_msgs::ControlCommandStamped& msg)
 {
-  command_data.linear_velocity = msg.cmd.linear_velocity;
-  command_data.steering_angle = msg.cmd.steering_angle;
+	if(ENABLE_VELOCITY_ONLY_TEST == 1)
+	{
+		command_data.linear_velocity = msg.cmd.linear_velocity;
+		command_data.steering_angle = 0;
+	}
+	else
+	{
+		command_data.linear_velocity = msg.cmd.linear_velocity;
+		command_data.steering_angle = msg.cmd.steering_angle;
+	}
+  //std::cout << "Sending Control Command Data To ZMP PC !!" << std::endl;
 }
 
 static void *sendCommand(void *arg)
@@ -124,13 +146,13 @@ static void *sendCommand(void *arg)
   delete client_sockp;
 
   std::ostringstream oss;
-  oss << command_data.linear_x << ",";
+  oss << command_data.linear_velocity << ",";
   oss << command_data.angular_z << ",";
   oss << command_data.modeValue << ",";
   oss << command_data.gearValue << ",";
   oss << command_data.accellValue << ",";
-  oss << command_data.brakeValue << ",";
   oss << command_data.steerValue << ",";
+  oss << command_data.brakeValue << ",";
   oss << command_data.linear_velocity << ",";
   oss << command_data.steering_angle;
 
@@ -153,6 +175,8 @@ static void *sendCommand(void *arg)
 static void* receiverCaller(void *unused)
 {
   constexpr int listen_port = 10001;
+
+
 
   int sock = socket(AF_INET, SOCK_STREAM, 0);
   if(sock == -1){
@@ -216,7 +240,7 @@ int main(int argc, char **argv)
   ros::init(argc ,argv, "vehicle_sender") ;
   ros::NodeHandle nh;
 
-  std::cout << "vehicle sender" << std::endl;
+  std::cout << "vehicle sender bla bla bla !!!!! " << std::endl;
   ros::Subscriber sub[7];
   sub[0] = nh.subscribe("/twist_cmd", 1, twistCMDCallback);
   sub[1] = nh.subscribe("/mode_cmd",  1, modeCMDCallback);

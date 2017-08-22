@@ -57,6 +57,7 @@
 static ros::Publisher can_pub;
 static ros::Publisher mode_pub;
 static int mode;
+#define ENABLE_VELOCITY_ONLY_TEST 1
 
 static bool parseCanValue(const std::string& can_data, autoware_msgs::CanInfo& msg)
 {
@@ -64,11 +65,21 @@ static bool parseCanValue(const std::string& can_data, autoware_msgs::CanInfo& m
   std::vector<std::string> columns;
 
   std::string column;
-  while(std::getline(ss, column, ',')){
+  while(std::getline(ss, column, ','))
+  {
     columns.push_back(column);
   }
 
-  for (std::size_t i = 0; i < columns.size(); i += 2) {
+  if(columns.size() <= 4) return false;
+
+  for (std::size_t i = 0; i < columns.size(); i += 2)
+  {
+	  if(i >= (int)columns.size()-1)
+		  return false;
+
+	  if(columns[i].size()==0)
+		  continue;
+
     int key = std::stoi(columns[i]);
     switch (key) {
     case CAN_KEY_MODE:
@@ -132,6 +143,8 @@ static void* getCanValue(void *arg)
       break;
     }
   }
+
+
 
   if(close(sock)<0){
     std::perror("close");

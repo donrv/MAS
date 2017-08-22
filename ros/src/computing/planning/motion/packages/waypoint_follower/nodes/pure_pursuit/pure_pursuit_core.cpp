@@ -87,17 +87,24 @@ void PurePursuitNode::initForROS()
 
 void PurePursuitNode::run()
 {
-  ROS_INFO_STREAM("pure pursuit start");
+
+
+	 ROS_INFO_STREAM("pure pursuit start");
+
+
   ros::Rate loop_rate(LOOP_RATE_);
   while (ros::ok())
   {
+
     ros::spinOnce();
+
     if (!is_pose_set_ || !is_waypoint_set_ || !is_velocity_set_ || !is_config_set_)
     {
       ROS_WARN("Necessary topics are not subscribed yet ... ");
       loop_rate.sleep();
       continue;
     }
+
 
     pp_.setLookaheadDistance(computeLookaheadDistance());
 
@@ -131,14 +138,15 @@ void PurePursuitNode::publishTwistStamped(const bool &can_get_curvature, const d
 
 void PurePursuitNode::publishControlCommandStamped(const bool &can_get_curvature, const double &kappa) const
 {
-  if (!publishes_for_steering_robot_)
-    return;
+//  if (!publishes_for_steering_robot_)
+//    return;
 
   autoware_msgs::ControlCommandStamped ccs;
   ccs.header.stamp = ros::Time::now();
   ccs.cmd.linear_velocity = can_get_curvature ? computeCommandVelocity() : 0;
   ccs.cmd.steering_angle = can_get_curvature ? convertCurvatureToSteeringAngle(wheel_base_, kappa) : 0;
 
+  //std::cout << "Publish All Messages From Pure Pursuit ! " << std::endl;
   pub2_.publish(ccs);
 }
 

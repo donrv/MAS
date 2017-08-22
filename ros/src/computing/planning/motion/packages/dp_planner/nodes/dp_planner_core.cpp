@@ -739,7 +739,7 @@ void PlannerX::callbackGetVehicleStatus(const geometry_msgs::TwistStampedConstPt
 {
 	m_VehicleState.speed = msg->twist.linear.x;
 
-	if(msg->twist.linear.x != 0)
+	if(fabs(msg->twist.linear.x) > 0.01)
 		m_VehicleState.steer = atan(m_LocalPlanner.m_CarInfo.wheel_base * msg->twist.angular.z/msg->twist.linear.x);
 
 	UtilityHNS::UtilityH::GetTickCount(m_VehicleState.tStamp);
@@ -762,6 +762,8 @@ void PlannerX::callbackGetCanInfo(const autoware_msgs::CanInfoConstPtr &msg)
 {
 	m_VehicleState.speed = msg->speed/3.6;
 	m_VehicleState.steer = msg->angle * m_LocalPlanner.m_CarInfo.max_steer_angle / m_LocalPlanner.m_CarInfo.max_steer_value;
+	UtilityHNS::UtilityH::GetTickCount(m_VehicleState.tStamp);
+
 	std::cout << "Can Info, Speed: "<< m_VehicleState.speed << ", Steering: " << m_VehicleState.steer  << std::endl;
 }
 
