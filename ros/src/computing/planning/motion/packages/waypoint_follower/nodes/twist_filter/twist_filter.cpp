@@ -36,7 +36,7 @@
 #include "autoware_msgs/ConfigTwistFilter.h"
 #include "autoware_msgs/CanInfo.h"
 
-#define ENABLE_VELOCITY_ONLY_TEST 1
+#define ENABLE_VELOCITY_ONLY_TEST 0
 
 
 namespace {
@@ -119,8 +119,8 @@ int main(int argc, char **argv)
     ros::NodeHandle nh;
     ros::NodeHandle private_nh("~");
 
-   // if(ENABLE_VELOCITY_ONLY_TEST == 1)
-    ros::Subscriber sub_can_info = nh.subscribe("/can_info", 1,	callbackGetCanInfo);
+    if(ENABLE_VELOCITY_ONLY_TEST == 1)
+    	ros::Subscriber sub_can_info = nh.subscribe("/can_info", 1,	callbackGetCanInfo);
 
     ros::Subscriber twist_sub = nh.subscribe("twist_raw", 1, TwistCmdCallback);
     ros::Subscriber config_sub = nh.subscribe("config/twist_filter", 10, configCallback);
