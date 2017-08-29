@@ -161,6 +161,10 @@ void way_planner_core::callbackGetGoalPose(const geometry_msgs::PoseStampedConst
 {
 	PlannerHNS::WayPoint wp = PlannerHNS::WayPoint(msg->pose.position.x+m_OriginPos.position.x, msg->pose.position.y+m_OriginPos.position.y, msg->pose.position.z+m_OriginPos.position.z, tf::getYaw(msg->pose.orientation));
 	m_GoalsPos.push_back(wp);
+	std::ostringstream goal_name;
+	goal_name << "Destination " << m_GoalsPos.size();
+	m_GoalsNames.push_back(goal_name.str());
+
 	ROS_INFO("Received Goal Pose");
 }
 
@@ -626,29 +630,15 @@ bool way_planner_core::HMI_DoOneStep()
 	PlannerHNS::WayPoint* currOptions = 0;
 	RosHelpers::FindIncommingBranches(m_GeneratedTotalPaths,startPoint, min_distance, branches, currOptions);
 
+	HMI_MSG msg;
+	msg.type = OPTIONS_MSG;
+
 	if(bMissionCompleted)
 	{
-		HMI_MSG msg;
-		msg.type = OPTIONS_MSG;
-		msg.options.clear();
 		msg.options.push_back(PlannerHNS::DESTINATION_REACHED);
-		msg.next_destination_id = m_iCurrentGoalIndex;
-		msg.destinations.clear();
-		for(unsigned int iDes = 0; iDes < m_GoalsNames.size(); iDes ++)
-		{
-//			if(iDes == m_iCurrentGoalIndex)
-//				msg.destinations.push_back(m_GoalsNames.at(iDes) + "_Reached");
-//			else
-				msg.destinations.push_back(m_GoalsNames.at(iDes));
-		}
-		m_SocketServer.SendMSG(msg);
 	}
 	else if(branches.size() > 0)
 	{
-
-		HMI_MSG msg;
-		msg.type = OPTIONS_MSG;
-		msg.options.clear();
 		for(unsigned int i = 0; i< branches.size(); i++)
 			msg.options.push_back(branches.at(i)->actionCost.at(0).first);
 
@@ -675,12 +665,11 @@ bool way_planner_core::HMI_DoOneStep()
 			msg.current = currOptions->actionCost.at(0).first;
 			msg.currID = currOptions->laneId;
 		}
-
-		msg.next_destination_id = m_iCurrentGoalIndex;
-		msg.destinations = m_GoalsNames;
-
-		m_SocketServer.SendMSG(msg);
 	}
+
+	msg.next_destination_id = m_iCurrentGoalIndex;
+	msg.destinations = m_GoalsNames;
+	m_SocketServer.SendMSG(msg);
 
 	double total_d = 0;
 	if(m_GeneratedTotalPaths.size()>0)

@@ -1540,7 +1540,8 @@ pair<ACTION_TYPE, double> MappingHelpers::GetActionPairFromPrefix(const string& 
 	act_cost.second = 0;
 
 	vector<string> idstr = SplitString(str_ids, "_");
-	if(idstr.size() == 2)
+
+	if(idstr.size() >= 2)
 	{
 		if(idstr.at(0).size() > 0 && idstr.at(0).at(0) == 'L')
 			act_cost.first = LEFT_TURN_ACTION;
