@@ -165,6 +165,7 @@ protected:
 	PlannerHNS::ACTION_TYPE m_NextAction;
 	PlannerHNS::ACTION_TYPE m_PrevAction;
 	double m_SlowDownFactor;
+	bool m_bFirstStart;
 
 	ros::NodeHandle nh;
 
@@ -245,7 +246,7 @@ private:
 
 
   	double m_AvgResponseTime; //seconds
-  	HMISocketServer m_SocketServer;
+  	HMISocketServer* m_SocketServer;
   	std::vector<PlannerHNS::WayPoint*> m_ModifiedWayPointsCosts;
   	bool HMI_DoOneStep();
 

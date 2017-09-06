@@ -61,6 +61,7 @@ way_planner_core::way_planner_core()
 	m_pCurrGoal = 0;
 	m_iCurrentGoalIndex = 0;
 	m_bKmlMap = false;
+	m_bFirstStart = false;
 	m_NextAction = PlannerHNS::WAITING_ACTION;
 	m_PrevAction = PlannerHNS::WAITING_ACTION;
 	m_SlowDownFactor = 1.0;
@@ -112,8 +113,14 @@ way_planner_core::way_planner_core()
 	if(m_params.bEnableHMI)
 	{
 		m_AvgResponseTime = 0;
-		m_SocketServer.InitSocket(10001, 10002);
+		m_SocketServer = new HMISocketServer;
+		while(m_SocketServer->InitSocket(10001, 10002) < 0)
+		{
+			usleep(1000);
+		}
 	}
+	else
+		m_SocketServer = 0;
 
 	/** @todo To achieve perfection , you need to start sometime */
 
@@ -155,6 +162,12 @@ way_planner_core::~way_planner_core()
 {
 	if(m_params.bEnableRvizInput)
 		SaveSimulationData();
+
+	if(m_SocketServer)
+	{
+		delete m_SocketServer;
+		m_SocketServer = 0;
+	}
 }
 
 void way_planner_core::callbackGetGoalPose(const geometry_msgs::PoseStampedConstPtr &msg)
@@ -463,7 +476,8 @@ void way_planner_core::VisualizeAndSend(const std::vector<std::vector<PlannerHNS
 	RosHelpers::createGlobalLaneArrayVelocityMarker(lane_array, pathsToVisualize);
 	//RosHelpers::ConvertFromPlannerHToAutowareVisualizePathFormat(generatedTotalPaths, pathsToVisualize);
 	pub_PathsRviz.publish(pathsToVisualize);
-	pub_Paths.publish(lane_array);
+	if(m_bFirstStart)
+		pub_Paths.publish(lane_array);
 
 #ifdef OPENPLANNER_ENABLE_LOGS
 	for(unsigned int i=0; i < generatedTotalPaths.size(); i++)
@@ -608,7 +622,7 @@ bool way_planner_core::HMI_DoOneStep()
 
 	PlannerHNS::WayPoint startPoint;
 
-	if(m_GoalsPos.size() > 1)
+	if(m_GoalsPos.size() > 0)
 		startPoint = m_CurrentPose;
 
 
@@ -628,7 +642,8 @@ bool way_planner_core::HMI_DoOneStep()
 	}
 
 	PlannerHNS::WayPoint* currOptions = 0;
-	RosHelpers::FindIncommingBranches(m_GeneratedTotalPaths,startPoint, min_distance, branches, currOptions);
+	if(m_GeneratedTotalPaths.size()>0 && m_GeneratedTotalPaths.at(0).size()>0)
+		RosHelpers::FindIncommingBranches(m_GeneratedTotalPaths,startPoint, min_distance, branches, currOptions);
 
 	HMI_MSG msg;
 	msg.type = OPTIONS_MSG;
@@ -669,7 +684,8 @@ bool way_planner_core::HMI_DoOneStep()
 
 	msg.next_destination_id = m_iCurrentGoalIndex;
 	msg.destinations = m_GoalsNames;
-	m_SocketServer.SendMSG(msg);
+	if(m_SocketServer)
+		m_SocketServer->SendMSG(msg);
 
 	double total_d = 0;
 	if(m_GeneratedTotalPaths.size()>0)
@@ -677,7 +693,9 @@ bool way_planner_core::HMI_DoOneStep()
 			total_d += hypot(m_GeneratedTotalPaths.at(0).at(iwp).pos.y - m_GeneratedTotalPaths.at(0).at(iwp-1).pos.y, m_GeneratedTotalPaths.at(0).at(iwp).pos.x - m_GeneratedTotalPaths.at(0).at(iwp-1).pos.x);
 
 	HMI_MSG inc_msg;
-	int bNew = m_SocketServer.GetLatestMSG(inc_msg);
+	int bNew = 0;
+	if(m_SocketServer)
+		bNew = m_SocketServer->GetLatestMSG(inc_msg);
 	if(bNew>0)
 	{
 
@@ -688,7 +706,9 @@ bool way_planner_core::HMI_DoOneStep()
 			if(inc_msg.options.at(j) == PlannerHNS::START_ACTION)
 			{
 				m_NextAction = PlannerHNS::START_ACTION;
+				m_bFirstStart = true;
 				m_params.bEnableReplanning = true;
+				m_SlowDownFactor = 1.0;
 				std::cout << "GO Go Go  Action ! " << inc_msg.options.at(j) <<  std::endl;
 
 				if(m_GeneratedTotalPaths.size() > 0 && m_GeneratedTotalPaths.at(0).size() > 3 && m_VehicleState.speed == 0)
@@ -715,7 +735,7 @@ bool way_planner_core::HMI_DoOneStep()
 			}
 			else if(inc_msg.options.at(j) == PlannerHNS::SLOWDOWN_ACTION && m_NextAction != PlannerHNS::SLOWDOWN_ACTION)
 			{
-				std::cout << "Stop Action ! " << std::endl;
+				std::cout << "Slowdown Action ! " << std::endl;
 				m_NextAction = PlannerHNS::SLOWDOWN_ACTION;
 			}
 			else if(inc_msg.options.at(j) == PlannerHNS::CHANGE_DESTINATION)

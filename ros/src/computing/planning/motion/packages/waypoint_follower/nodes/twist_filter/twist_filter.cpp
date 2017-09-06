@@ -37,6 +37,7 @@
 #include "autoware_msgs/CanInfo.h"
 
 #define ENABLE_VELOCITY_ONLY_TEST 0
+#define ENABLE_STEERING_ONLY_TEST 1
 
 
 namespace {

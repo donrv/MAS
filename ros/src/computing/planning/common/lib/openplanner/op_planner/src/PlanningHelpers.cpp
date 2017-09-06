@@ -1826,6 +1826,7 @@ WayPoint* PlanningHelpers::BuildPlanningSearchTreeStraight(WayPoint* pStart,
 	WayPoint* pZero = 0;
 	WayPoint* wp    = new WayPoint();
 	*wp = *pStart;
+	wp->cost = 0;
 	nextLeafToTrace.push_back(make_pair(pZero, wp));
 	all_cells_to_delete.push_back(wp);
 
@@ -1864,11 +1865,11 @@ WayPoint* PlanningHelpers::BuildPlanningSearchTreeStraight(WayPoint* pStart,
 				double d = hypot(wp->pos.y - pH->pos.y, wp->pos.x - pH->pos.x);
 				distance += d;
 
-				for(unsigned int a = 0; a < wp->actionCost.size(); a++)
-				{
-					//if(wp->actionCost.at(a).first == FORWARD_ACTION)
-						d += wp->actionCost.at(a).second;
-				}
+//				for(unsigned int a = 0; a < wp->actionCost.size(); a++)
+//				{
+//					//if(wp->actionCost.at(a).first == FORWARD_ACTION)
+//						d += wp->actionCost.at(a).second;
+//				}
 
 				wp->cost = pH->cost + d;
 				wp->pBacks.push_back(pH);
