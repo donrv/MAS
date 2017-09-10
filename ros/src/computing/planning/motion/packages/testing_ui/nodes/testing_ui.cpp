@@ -41,7 +41,6 @@ int main(int argc, char **argv)
 	DrawObjBase* pSimulator =  0;
 	pSimulator = new AlternativeVisualizer();
 
-
 	WindowParams pms;
 	DisplayParams dpms;
 	dpms.centerRotX = 0;
@@ -49,9 +48,15 @@ int main(int argc, char **argv)
 	dpms.translateX = 0;
 	dpms.translateY = 0;
 	MainWindowWrapper wrapper(pSimulator);
+	ros::NodeHandle nh;
+
+	nh.getParam("/testing_ui/width", pms.w);
+	nh.getParam("/testing_ui/height", pms.h);
+	nh.getParam("/testing_ui/info_ratio", pms.info_ratio);
+
 	wrapper.UpdateParams(pms, dpms);
 
-	ros::NodeHandle nh;
+
 
 	wrapper.InitOpenGLWindow(argc, argv);
 

@@ -57,7 +57,6 @@
 static ros::Publisher can_pub;
 static ros::Publisher mode_pub;
 static int mode;
-#define ENABLE_VELOCITY_ONLY_TEST 1
 
 static bool parseCanValue(const std::string& can_data, autoware_msgs::CanInfo& msg)
 {

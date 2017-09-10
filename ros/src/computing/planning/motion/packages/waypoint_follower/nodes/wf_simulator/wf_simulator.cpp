@@ -38,15 +38,21 @@
 #include <iostream>
 #include <std_msgs/Int32.h>
 #include <random>
-
+#include <autoware_msgs/CanInfo.h>
 #include "waypoint_follower/libwaypoint_follower.h"
 
 namespace
 {
+
+int ENABLE_VELOCITY_ONLY_TEST = 1;
+
 geometry_msgs::Twist _current_velocity;
 
 const std::string SIMULATION_FRAME = "sim_base_link";
 const std::string MAP_FRAME = "map";
+
+double g_actual_car_velocity = 0.0;
+//double g_actual_car_angular = 0.0;
 
 geometry_msgs::Pose _initial_pose;
 bool _initial_set = false;
@@ -66,23 +72,30 @@ void CmdCallBack(const geometry_msgs::TwistStampedConstPtr &msg, double accel_ra
 {
 
   static double previous_linear_velocity = 0;
+  double temp_velocity = msg->twist.linear.x;
+  //double temp_angular  = msg->twist.angular.z;
+  if(ENABLE_VELOCITY_ONLY_TEST == 1)
+  {
+	  temp_velocity = g_actual_car_velocity;
+	  //temp_angular = g_actual_car_angular;
+  }
 
-  if(_current_velocity.linear.x < msg->twist.linear.x)
+  if(_current_velocity.linear.x < temp_velocity)
   {
     _current_velocity.linear.x = previous_linear_velocity + accel_rate / (double)LOOP_RATE;
 
-    if(_current_velocity.linear.x > msg->twist.linear.x)
+    if(_current_velocity.linear.x > temp_velocity)
     {
-      _current_velocity.linear.x = msg->twist.linear.x;
+      _current_velocity.linear.x = temp_velocity;
     }
   }
   else
   {
     _current_velocity.linear.x = previous_linear_velocity - accel_rate / (double)LOOP_RATE;
 
-    if(_current_velocity.linear.x < msg->twist.linear.x)
+    if(_current_velocity.linear.x < temp_velocity)
     {
-      _current_velocity.linear.x = msg->twist.linear.x;
+      _current_velocity.linear.x = temp_velocity;
     }
   }
 
@@ -240,6 +253,13 @@ void publishOdometry()
 
   last_time = current_time;
 }
+
+void callbackGetCanInfo(const autoware_msgs::CanInfoConstPtr &msg)
+{
+	g_actual_car_velocity = msg->speed/3.6;
+	//g_actual_car_angular = msg->twist.angular.z;
+}
+
 }
 int main(int argc, char **argv)
 {
@@ -264,6 +284,11 @@ int main(int argc, char **argv)
   g_velocity_publisher = nh.advertise<geometry_msgs::TwistStamped>("sim_velocity", 10);
 
   // subscribe topic
+
+
+  //if(ENABLE_VELOCITY_ONLY_TEST == 1)
+  ros::Subscriber sub_can_info = nh.subscribe("/can_info", 1,	callbackGetCanInfo);
+
   ros::Subscriber cmd_subscriber = nh.subscribe<geometry_msgs::TwistStamped>("twist_cmd", 10, boost::bind(CmdCallBack, _1, accel_rate));
   ros::Subscriber waypoint_subcscriber = nh.subscribe("base_waypoints", 10, waypointCallback);
   ros::Subscriber closest_sub = nh.subscribe("closest_waypoint", 10, callbackFromClosestWaypoint);

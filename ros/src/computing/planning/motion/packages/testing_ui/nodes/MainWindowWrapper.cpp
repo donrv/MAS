@@ -154,6 +154,8 @@ void MainWindowWrapper::InitOpenGLWindow(int argc, char** argv)
 
 	atexit(CleanUp);
 
+	cout << "Before The OpenGL Main Loop" << endl;
+
 	glutMainLoop();
 }
 

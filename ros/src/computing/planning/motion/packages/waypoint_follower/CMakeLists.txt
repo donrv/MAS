@@ -10,6 +10,8 @@ find_package(catkin REQUIRED COMPONENTS
   tf
   gnss
   autoware_msgs
+  op_utility
+  op_planner
 )
 
 ################################################
@@ -22,7 +24,7 @@ find_package(catkin REQUIRED COMPONENTS
 catkin_package(
   INCLUDE_DIRS include
   LIBRARIES libwaypoint_follower
-  CATKIN_DEPENDS roscpp tf autoware_msgs
+  CATKIN_DEPENDS roscpp tf autoware_msgs op_utility op_planner
  # DEPENDS
 )
 

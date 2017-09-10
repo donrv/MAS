@@ -132,6 +132,8 @@ void PurePursuitNode::publishTwistStamped(const bool &can_get_curvature, const d
   geometry_msgs::TwistStamped ts;
   ts.header.stamp = ros::Time::now();
   ts.twist.linear.x = can_get_curvature ? computeCommandVelocity() : 0;
+  if(ts.twist.linear.x<0)
+	  ts.twist.linear.x*=-1;
   ts.twist.angular.z = can_get_curvature ? kappa * ts.twist.linear.x : 0;
   pub1_.publish(ts);
 }
@@ -144,6 +146,8 @@ void PurePursuitNode::publishControlCommandStamped(const bool &can_get_curvature
   autoware_msgs::ControlCommandStamped ccs;
   ccs.header.stamp = ros::Time::now();
   ccs.cmd.linear_velocity = can_get_curvature ? computeCommandVelocity() : 0;
+  if(ccs.cmd.linear_velocity<0)
+	  ccs.cmd.linear_velocity*=-1;
   ccs.cmd.steering_angle = can_get_curvature ? convertCurvatureToSteeringAngle(wheel_base_, kappa) : 0;
 
   //std::cout << "Publish All Messages From Pure Pursuit ! " << std::endl;

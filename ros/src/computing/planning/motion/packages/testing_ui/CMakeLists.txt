@@ -53,7 +53,8 @@ nodes/AlternativeVisualizer.cpp
 nodes/DrawObjBase.cpp
 nodes/DrawingHelpers.cpp
 nodes/glm.cpp
-nodes/MainWindowWrapper.cpp)
+nodes/MainWindowWrapper.cpp
+nodes/Graph2dBase.cpp)
 
 target_link_libraries(testing_ui  
 		${catkin_LIBRARIES}		

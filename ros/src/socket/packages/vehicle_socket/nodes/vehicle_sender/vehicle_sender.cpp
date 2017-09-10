@@ -75,17 +75,15 @@ void CommandData::reset()
 }
 
 static CommandData command_data;
-#define ENABLE_VELOCITY_ONLY_TEST 1
+int ENABLE_VELOCITY_ONLY_TEST = 1;
 
 static void twistCMDCallback(const geometry_msgs::TwistStamped& msg)
 {
-	if(msg.twist.linear.x - command_data.linear_x > 4)
-		command_data.linear_x += 1;
-	else if(msg.twist.linear.x - command_data.linear_x < -4)
-		command_data.linear_x -= 1;
-
 	if(ENABLE_VELOCITY_ONLY_TEST == 1)
+	{
 		command_data.linear_x = msg.twist.linear.x;
+		command_data.angular_z = 0;
+	}
 	else
 	{
 		command_data.linear_x = msg.twist.linear.x;
@@ -146,7 +144,7 @@ static void *sendCommand(void *arg)
   delete client_sockp;
 
   std::ostringstream oss;
-  oss << command_data.linear_velocity << ",";
+  oss << command_data.linear_x << ",";
   oss << command_data.angular_z << ",";
   oss << command_data.modeValue << ",";
   oss << command_data.gearValue << ",";

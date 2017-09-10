@@ -8,10 +8,14 @@
 #ifndef AlternativeVisualizer_H_
 #define AlternativeVisualizer_H_
 #include <iostream>
+#include "RoadNetwork.h"
 #include "DrawObjBase.h"
 #include "DrawingHelpers.h"
 #include <ros/ros.h>
 #include <geometry_msgs/TwistStamped.h>
+#include <autoware_msgs/ControlCommandStamped.h>
+#include <autoware_msgs/CanInfo.h>
+#include "Graph2dBase.h"
 
 namespace Graphics
 {
@@ -34,8 +38,23 @@ public:
     void AddSimulatedCarPos(const double& x,const double& y, const double& a);
 
 
+    void twistCMDCallback(const geometry_msgs::TwistStamped& msg);
+    void ctrlCMDCallback(const autoware_msgs::ControlCommandStamped& msg);
+    void callbackGetCanInfo(const autoware_msgs::CanInfoConstPtr &msg);
+
+    double m_VehicleTargetStateSpeed;
+    double m_VehicleTargetStateSteer;
+    double m_VehicleCurrentStateSpeed;
+    double m_VehicleCurrentStateSteer;
+
     ros::Publisher pub_VehicleCommand;
+    ros::Subscriber twist_sub;
+    ros::Subscriber cmd_sub ;
+    ros::Subscriber sub_can_info;
     int m_Velocity;
+
+    Graph2dBase* m_pCurrentVelocityGraph;
+    Graph2dBase* m_pTargetVelocityGraph;
 
 private:
 	void PrepareVectorMapForDrawing();

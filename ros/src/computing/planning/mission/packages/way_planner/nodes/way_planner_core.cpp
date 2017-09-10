@@ -476,7 +476,7 @@ void way_planner_core::VisualizeAndSend(const std::vector<std::vector<PlannerHNS
 	RosHelpers::createGlobalLaneArrayVelocityMarker(lane_array, pathsToVisualize);
 	//RosHelpers::ConvertFromPlannerHToAutowareVisualizePathFormat(generatedTotalPaths, pathsToVisualize);
 	pub_PathsRviz.publish(pathsToVisualize);
-	if(m_bFirstStart)
+	if((m_bFirstStart && m_params.bEnableHMI) || !m_params.bEnableHMI)
 		pub_Paths.publish(lane_array);
 
 #ifdef OPENPLANNER_ENABLE_LOGS

@@ -36,9 +36,6 @@
 #include "autoware_msgs/ConfigTwistFilter.h"
 #include "autoware_msgs/CanInfo.h"
 
-#define ENABLE_VELOCITY_ONLY_TEST 0
-#define ENABLE_STEERING_ONLY_TEST 1
-
 
 namespace {
 
@@ -47,7 +44,6 @@ ros::Publisher g_twist_pub;
 double g_lateral_accel_limit = 5.0;
 double g_lowpass_gain_linear_x = 0.0;
 double g_lowpass_gain_angular_z = 0.0;
-double g_actual_car_velocity = 0.0;
 bool b_actual_car_velocity = false;
 constexpr double RADIUS_MAX = 9e10;
 constexpr double ERROR = 1e-8;
@@ -91,24 +87,14 @@ void TwistCmdCallback(const geometry_msgs::TwistStampedConstPtr &msg)
   lowpass_linear_x = g_lowpass_gain_linear_x * lowpass_linear_x + (1 - g_lowpass_gain_linear_x) * tp.twist.linear.x;
   lowpass_angular_z = g_lowpass_gain_angular_z * lowpass_angular_z + (1 - g_lowpass_gain_angular_z) * tp.twist.angular.z;
 
-
-  if(ENABLE_VELOCITY_ONLY_TEST == 1)
-	  tp.twist.linear.x = g_actual_car_velocity;
-  else
-	  tp.twist.linear.x = lowpass_linear_x;
-
+  if(lowpass_linear_x < 0)
+	  lowpass_linear_x*=-1;
+  tp.twist.linear.x = lowpass_linear_x;
   tp.twist.angular.z = lowpass_angular_z;
 
   ROS_INFO("v: %f -> %f",v,tp.twist.linear.x);
   g_twist_pub.publish(tp);
 
-}
-
-void callbackGetCanInfo(const autoware_msgs::CanInfoConstPtr &msg)
-{
-	g_actual_car_velocity = msg->speed /3.6;
-	b_actual_car_velocity = true;
-	//std::cout << "Can Info, Speed: "<< g_actual_car_velocity << ", Steering: " << 0 << std::endl;
 }
 
 } // namespace
@@ -120,8 +106,6 @@ int main(int argc, char **argv)
     ros::NodeHandle nh;
     ros::NodeHandle private_nh("~");
 
-    if(ENABLE_VELOCITY_ONLY_TEST == 1)
-    	ros::Subscriber sub_can_info = nh.subscribe("/can_info", 1,	callbackGetCanInfo);
 
     ros::Subscriber twist_sub = nh.subscribe("twist_raw", 1, TwistCmdCallback);
     ros::Subscriber config_sub = nh.subscribe("config/twist_filter", 10, configCallback);
