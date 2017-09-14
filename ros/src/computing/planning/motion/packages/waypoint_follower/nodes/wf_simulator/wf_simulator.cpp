@@ -44,7 +44,7 @@
 namespace
 {
 
-int ENABLE_VELOCITY_ONLY_TEST = 1;
+int ENABLE_VELOCITY_ONLY_TEST = 0;
 
 geometry_msgs::Twist _current_velocity;
 

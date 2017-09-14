@@ -54,7 +54,8 @@ nodes/DrawObjBase.cpp
 nodes/DrawingHelpers.cpp
 nodes/glm.cpp
 nodes/MainWindowWrapper.cpp
-nodes/Graph2dBase.cpp)
+nodes/Graph2dBase.cpp
+nodes/SimulatedController.cpp)
 
 target_link_libraries(testing_ui  
 		${catkin_LIBRARIES}		

@@ -64,7 +64,7 @@ way_planner_core::way_planner_core()
 	m_bFirstStart = false;
 	m_NextAction = PlannerHNS::WAITING_ACTION;
 	m_PrevAction = PlannerHNS::WAITING_ACTION;
-	m_SlowDownFactor = 1.0;
+	m_SlowDownFactor = 3.5;
 	//bStartPos = false;
 	//bGoalPos = false;
 	//bUsingCurrentPose = false;
@@ -440,9 +440,8 @@ if(generatedTotalPaths.size() > 0 && generatedTotalPaths.at(0).size()>0)
 		PlannerHNS::PlanningHelpers::CalcAngleAndCost(generatedTotalPaths.at(i));
 		if(m_NextAction == PlannerHNS::SLOWDOWN_ACTION)
 		{
-			m_SlowDownFactor = m_SlowDownFactor * 0.75;
 			for(unsigned int j=0; j < generatedTotalPaths.at(i).size(); j++)
-				generatedTotalPaths.at(i).at(j).v *= m_SlowDownFactor;
+				generatedTotalPaths.at(i).at(j).v = m_SlowDownFactor;
 		}
 
 		std::cout << "New DP Path -> " << generatedTotalPaths.at(i).size() << std::endl;
@@ -708,7 +707,6 @@ bool way_planner_core::HMI_DoOneStep()
 				m_NextAction = PlannerHNS::START_ACTION;
 				m_bFirstStart = true;
 				m_params.bEnableReplanning = true;
-				m_SlowDownFactor = 1.0;
 				std::cout << "GO Go Go  Action ! " << inc_msg.options.at(j) <<  std::endl;
 
 				if(m_GeneratedTotalPaths.size() > 0 && m_GeneratedTotalPaths.at(0).size() > 3 && m_VehicleState.speed == 0)

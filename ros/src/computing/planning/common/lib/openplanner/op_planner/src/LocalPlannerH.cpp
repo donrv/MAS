@@ -72,6 +72,10 @@ void LocalPlannerH::Init(const ControllerParams& ctrlParams, const PlannerHNS::P
  		m_InitialFollowingDistance = m_params.minFollowingDistance;
  		if(m_pCurrentBehaviorState)
  			m_pCurrentBehaviorState->SetBehaviorsParams(&m_params);
+
+ 		m_pidVelocity.Init(0.1, 0.003, 0.1);
+		m_pidVelocity.Setlimit(params.maxSpeed, 0);
+
  	}
 
 void LocalPlannerH::InitBehaviorStates()
@@ -505,10 +509,15 @@ void LocalPlannerH::InitPolygons()
 			inc = 0;
 
 		double target_velocity = CurrStatus.speed - inc;
+
+		double e = 0 - CurrStatus.speed;
+		//m_pidVelocity.Setlimit(0, 0);
+		double desiredVelocity = m_pidVelocity.getPID(e);
+
 		for(unsigned int i =  info.iBack; i < point_index; i++)
 		{
 			 if(i < m_Path.size() && i >= 0)
-				 m_Path.at(i).v = target_velocity;
+				 m_Path.at(i).v = desiredVelocity;
 			 target_velocity -= inc;
 		}
 	}
@@ -518,12 +527,16 @@ void LocalPlannerH::InitPolygons()
 		if(targe_acceleration <= 0 &&  targe_acceleration > m_CarInfo.max_deceleration/2.0)
 		{
 			double target_velocity = (targe_acceleration * dt) + CurrStatus.speed;
-			for(unsigned int i = 0; i < m_Path.size(); i++)
+			if(m_pCurrentBehaviorState->GetCalcParams()->iCurrSafeTrajectory != m_pCurrentBehaviorState->GetCalcParams()->iCentralTrajectory)
+				target_velocity*=AVOIDANCE_SPEED_FACTOR;
+
+			double e = target_velocity - CurrStatus.speed;
+			//m_pidVelocity.Setlimit(target_velocity, 0);
+			double desiredVelocity = m_pidVelocity.getPID(e);
+
+			for(unsigned int i = info.iBack; i < m_Path.size(); i++)
 			{
-				if(m_pCurrentBehaviorState->GetCalcParams()->iCurrSafeTrajectory == m_pCurrentBehaviorState->GetCalcParams()->iCentralTrajectory)
-					m_Path.at(i).v = target_velocity;
-				else
-					m_Path.at(i).v = target_velocity*AVOIDANCE_SPEED_FACTOR;
+				m_Path.at(i).v = target_velocity;
 			}
 
 			//cout << "Accelerate -> Target V: " << target_velocity << ", Brake D: " <<  average_braking_distance << ", Acceleration: " << targe_acceleration << endl;
@@ -561,19 +574,22 @@ void LocalPlannerH::InitPolygons()
 	else if(beh.state == FORWARD_STATE || beh.state == OBSTACLE_AVOIDANCE_STATE )
 	{
 		double target_velocity = max_velocity;
+		if(m_pCurrentBehaviorState->GetCalcParams()->iCurrSafeTrajectory != m_pCurrentBehaviorState->GetCalcParams()->iCentralTrajectory)
+			target_velocity*=AVOIDANCE_SPEED_FACTOR;
 
-		for(unsigned int i = 0; i < m_Path.size(); i++)
+		double e = target_velocity - CurrStatus.speed;
+		//m_pidVelocity.Setlimit(target_velocity, 0);
+		double desiredVelocity = m_pidVelocity.getPID(e);
+
+		for(unsigned int i = info.iBack; i < m_Path.size(); i++)
 		{
-			if(m_pCurrentBehaviorState->GetCalcParams()->iCurrSafeTrajectory == m_pCurrentBehaviorState->GetCalcParams()->iCentralTrajectory)
-				m_Path.at(i).v = target_velocity;
-			else
-				m_Path.at(i).v = target_velocity*AVOIDANCE_SPEED_FACTOR;
+			m_Path.at(i).v = desiredVelocity;
 		}
 	}
 	else
 	{
 		double target_velocity = 0;
-		for(unsigned int i = 0; i < m_Path.size(); i++)
+		for(unsigned int i = info.iBack; i < m_Path.size(); i++)
 			m_Path.at(i).v = target_velocity;
 	}
 

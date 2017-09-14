@@ -102,6 +102,8 @@ public:
 	double m_CurrentAccVelocity; // kilometer/hour
 	//std::vector<TrafficLight> m_TrafficLights;
 
+	UtilityHNS::PIDController 	m_pidVelocity;
+
 public:
 
 	LocalPlannerH();
