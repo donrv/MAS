@@ -114,7 +114,7 @@ way_planner_core::way_planner_core()
 	{
 		m_AvgResponseTime = 0;
 		m_SocketServer = new HMISocketServer;
-		while(m_SocketServer->InitSocket(10001, 10002) < 0)
+		while(m_SocketServer->InitSocket(10003, 10004) < 0)
 		{
 			usleep(1000);
 		}

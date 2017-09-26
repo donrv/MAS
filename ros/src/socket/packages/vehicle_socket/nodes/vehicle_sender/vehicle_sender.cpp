@@ -75,7 +75,7 @@ void CommandData::reset()
 }
 
 static CommandData command_data;
-int ENABLE_VELOCITY_ONLY_TEST = 1;
+int ENABLE_VELOCITY_ONLY_TEST = 0;
 
 static void twistCMDCallback(const geometry_msgs::TwistStamped& msg)
 {

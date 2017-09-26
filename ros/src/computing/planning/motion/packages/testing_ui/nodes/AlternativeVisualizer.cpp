@@ -174,14 +174,14 @@ void AlternativeVisualizer::DrawSimu()
 		twist.twist = t;
 		twist.header.stamp = ros::Time::now();
 
-		pub_VehicleCommand.publish(twist);
+		//pub_VehicleCommand.publish(twist);
 
 		autoware_msgs::brake_cmd brk_cmd;
 		autoware_msgs::accel_cmd acc_cmd;
 		acc_cmd.accel = m_VehicleTargetStateAccelerator;
 		brk_cmd.brake = m_VehicleTargetStateBrake;
-		pub_VehicleCommandAcc.publish(acc_cmd);
-		pub_VehicleCommandBrk.publish(brk_cmd);
+		//pub_VehicleCommandAcc.publish(acc_cmd);
+		//pub_VehicleCommandBrk.publish(brk_cmd);
 
 		// Log Testing Data
 		timespec time;
