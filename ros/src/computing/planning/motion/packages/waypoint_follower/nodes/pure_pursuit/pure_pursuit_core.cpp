@@ -106,19 +106,36 @@ void PurePursuitNode::run()
     }
 
 
-    pp_.setLookaheadDistance(computeLookaheadDistance());
+    if(pp_.getTrajectorySize() < 10)
+    {
+    	  geometry_msgs::TwistStamped ts;
+    	  ts.header.stamp = ros::Time::now();
+    	  ts.twist.linear.x = 0;
+    	  ts.twist.angular.z = 0;
+    	  pub1_.publish(ts);
+    	publishControlCommandStamped(0,0);
 
-    double kappa = 0;
-    bool can_get_curvature = pp_.canGetCurvature(&kappa);
-    publishTwistStamped(can_get_curvature, kappa);
-    publishControlCommandStamped(can_get_curvature, kappa);
+    	  autoware_msgs::ControlCommandStamped ccs;
+    	  ccs.header.stamp = ros::Time::now();
+    	  ccs.cmd.linear_velocity = 0;
+    	  ccs.cmd.steering_angle = 0;
+    	  pub2_.publish(ccs);
+    }
+    else
+    {
+		pp_.setLookaheadDistance(computeLookaheadDistance());
 
-    // for visualization with Rviz
-    pub11_.publish(displayNextWaypoint(pp_.getPoseOfNextWaypoint()));
-    pub13_.publish(displaySearchRadius(pp_.getCurrentPose().position, pp_.getLookaheadDistance()));
-    pub12_.publish(displayNextTarget(pp_.getPoseOfNextTarget()));
-    pub15_.publish(displayTrajectoryCircle(
-        waypoint_follower::generateTrajectoryCircle(pp_.getPoseOfNextTarget(), pp_.getCurrentPose())));
+		double kappa = 0;
+		bool can_get_curvature = pp_.canGetCurvature(&kappa);
+		publishTwistStamped(can_get_curvature, kappa);
+		publishControlCommandStamped(can_get_curvature, kappa);
+
+		// for visualization with Rviz
+		pub11_.publish(displayNextWaypoint(pp_.getPoseOfNextWaypoint()));
+		pub13_.publish(displaySearchRadius(pp_.getCurrentPose().position, pp_.getLookaheadDistance()));
+		pub12_.publish(displayNextTarget(pp_.getPoseOfNextTarget()));
+		pub15_.publish(displayTrajectoryCircle(waypoint_follower::generateTrajectoryCircle(pp_.getPoseOfNextTarget(), pp_.getCurrentPose())));
+    }
 
     is_pose_set_ = false;
     is_velocity_set_ = false;
@@ -200,6 +217,9 @@ void PurePursuitNode::callbackFromCurrentVelocity(const geometry_msgs::TwistStam
 
 void PurePursuitNode::callbackFromWayPoints(const autoware_msgs::laneConstPtr &msg)
 {
+	if(!msg) return;
+	if(msg->waypoints.size() == 0 ) return;
+
   if (!msg->waypoints.empty())
     command_linear_velocity_ = msg->waypoints.at(0).twist.twist.linear.x;
   else

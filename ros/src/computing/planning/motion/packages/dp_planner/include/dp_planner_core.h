@@ -38,6 +38,7 @@
 #include <geometry_msgs/PoseWithCovarianceStamped.h>
 #include <geometry_msgs/PoseStamped.h>
 #include <geometry_msgs/PoseArray.h>
+#include <geometry_msgs/TwistStamped.h>
 #include <nav_msgs/Odometry.h>
 #include <nav_msgs/OccupancyGrid.h>
 #include <autoware_msgs/Signals.h>
@@ -54,6 +55,8 @@
 
 #include "autoware_msgs/CloudCluster.h"
 #include "autoware_msgs/CloudClusterArray.h"
+#include "autoware_msgs/ControlCommand.h"
+
 
 #include <jsk_recognition_msgs/BoundingBox.h>
 #include <jsk_recognition_msgs/BoundingBoxArray.h>
@@ -119,6 +122,10 @@ protected:
 
 	PlannerHNS::WayPoint m_CurrentPos;
 	bool bNewCurrentPos;
+
+	geometry_msgs::TwistStamped m_Twist_raw;
+	geometry_msgs::TwistStamped m_Twist_cmd;
+	autoware_msgs::ControlCommand m_Ctrl_cmd;
 
 	std::vector<PlannerHNS::DetectedObject> m_OriginalClusters;
 	std::vector<PlannerHNS::DetectedObject> m_TrackedClusters;
@@ -242,6 +249,10 @@ protected:
 	ros::Subscriber sub_AStarPath			;
 	ros::Subscriber sub_WayPlannerPaths		;
 
+	ros::Subscriber sub_twist_cmd			;
+	ros::Subscriber sub_twist_raw			;
+	ros::Subscriber sub_ctrl_cmd			;
+
 	ros::Subscriber sub_CostMap				;
 
 	//vector map subscription
@@ -268,6 +279,10 @@ protected:
 	void callbackGetAStarPath(const autoware_msgs::LaneArrayConstPtr& msg);
 	void callbackGetWayPlannerPath(const autoware_msgs::LaneArrayConstPtr& msg);
 	void callbackGetCostMap(const nav_msgs::OccupancyGrid& msg);
+
+	void callbackGetTwistCMD(const geometry_msgs::TwistStampedConstPtr& msg);
+	void callbackGetTwistRaw(const geometry_msgs::TwistStampedConstPtr& msg);
+	void callbackGetCommandCMD(const autoware_msgs::ControlCommandConstPtr& msg);
 
 
 	//Vector map callbacks

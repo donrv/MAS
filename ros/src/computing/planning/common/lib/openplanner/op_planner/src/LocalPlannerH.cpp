@@ -72,9 +72,6 @@ void LocalPlannerH::Init(const ControllerParams& ctrlParams, const PlannerHNS::P
  		m_params = params;
  		m_InitialFollowingDistance = m_params.minFollowingDistance;
 
-
- 		m_CarInfo.max_speed_forward = 30.0/3.6;
- 		m_params.maxSpeed = m_CarInfo.max_speed_forward;
  		m_pidVelocity.Init(0.1, 0.003, 0.1);
 		m_pidVelocity.Setlimit(m_params.maxSpeed, 0);
 
@@ -594,7 +591,7 @@ void LocalPlannerH::InitPolygons()
 	RelativeInfo info, total_info;
 	PlanningHelpers::GetRelativeInfo(m_TotalPath.at(m_iCurrentTotalPathId), state, total_info);
 	PlanningHelpers::GetRelativeInfo(m_Path, state, info);
-	double average_braking_distance = -pow(CurrStatus.speed, 2)/(m_CarInfo.max_deceleration);
+	double average_braking_distance = -pow(CurrStatus.speed, 2)/(m_CarInfo.max_deceleration) ;
 	double max_velocity	= PlannerHNS::PlanningHelpers::GetVelocityAhead(m_TotalPath.at(m_iCurrentTotalPathId), total_info, average_braking_distance);
 
 	unsigned int point_index = 0;

@@ -130,7 +130,10 @@ PlannerX::PlannerX()
 	sub_current_pose 	= nh.subscribe("/current_pose", 			1,		&PlannerX::callbackGetCurrentPose, 		this);
 	sub_cluster_cloud 	= nh.subscribe("/cloud_clusters",			1,		&PlannerX::callbackGetCloudClusters, 	this);
 	sub_bounding_boxs  	= nh.subscribe("/bounding_boxes",			1,		&PlannerX::callbackGetBoundingBoxes, 	this);
-	sub_WayPlannerPaths = nh.subscribe("/realtime_cost_map",		1,		&PlannerX::callbackGetCostMap, 	this);
+	//sub_WayPlannerPaths = nh.subscribe("/realtime_cost_map",		1,		&PlannerX::callbackGetCostMap, 	this);
+	sub_twist_raw = nh.subscribe("/twist_raw",		1,		&PlannerX::callbackGetTwistRaw, 	this);
+	sub_twist_cmd = nh.subscribe("/twist_cmd",		1,		&PlannerX::callbackGetTwistCMD, 	this);
+	sub_ctrl_cmd = nh.subscribe("/ctrl_cmd",		1,		&PlannerX::callbackGetCommandCMD, 	this);
 
 #ifdef DATASET_GENERATION_BLOCK
 
@@ -217,7 +220,9 @@ PlannerX::~PlannerX()
 {
 #ifdef OPENPLANNER_ENABLE_LOGS
 	UtilityHNS::DataRW::WriteLogData(UtilityHNS::UtilityH::GetHomeDirectory()+UtilityHNS::DataRW::LoggingMainfolderName+UtilityHNS::DataRW::StatesLogFolderName, "MainLog",
-			"time,dt,Behavior State,behavior,num_Tracked_Objects,num_Cluster_Points,num_Contour_Points,t_Tracking,t_Calc_Cost, t_Behavior_Gen, t_Roll_Out_Gen, t_LocalPlanner, t_visualize_log, num_RollOuts, Full_Block, idx_Central_traj, iTrajectory, Stop Sign, Traffic Light, Min_Stop_Distance, follow_distance, follow_velocity, Velocity, Steering, X, Y, Z, heading,"
+			"time,dt,Behavior State,behavior,num_Tracked_Objects,num_Cluster_Points,num_Contour_Points,t_Tracking,t_Calc_Cost, t_Behavior_Gen, t_Roll_Out_Gen, t_LocalPlanner, "
+			"t_visualize_log, num_RollOuts, Full_Block, idx_Central_traj, iTrajectory, Stop Sign, Traffic Light, Min_Stop_Distance, follow_distance, follow_velocity, "
+			"OP Velocity, PP Velocity, TF Velocity, ctrl Velocity, Actual Velocity, Steering, X, Y, Z, heading,"
 			, m_LogData);
 #endif
 
@@ -640,6 +645,21 @@ void PlannerX::callbackGetCurrentPose(const geometry_msgs::PoseStampedConstPtr& 
 #endif
 }
 
+void PlannerX::callbackGetTwistRaw(const geometry_msgs::TwistStampedConstPtr& msg)
+{
+	m_Twist_raw = *msg;
+}
+
+void PlannerX::callbackGetTwistCMD(const geometry_msgs::TwistStampedConstPtr& msg)
+{
+	m_Twist_cmd = *msg;
+}
+
+void PlannerX::callbackGetCommandCMD(const autoware_msgs::ControlCommandConstPtr& msg)
+{
+	m_Ctrl_cmd = *msg;
+}
+
 autoware_msgs::CloudCluster PlannerX::GenerateSimulatedObstacleCluster(const double& x_rand, const double& y_rand, const double& z_rand, const int& nPoints, const geometry_msgs::PointStamped& centerPose)
 {
 	autoware_msgs::CloudCluster cluster;
@@ -1058,6 +1078,10 @@ void PlannerX::LogLocalPlanningInfo(double dt)
 				m_LocalPlanner.m_pCurrentBehaviorState->GetCalcParams()->minStoppingDistance << "," <<
 				m_LocalPlanner.m_pCurrentBehaviorState->GetCalcParams()->distanceToNext << "," <<
 				m_LocalPlanner.m_pCurrentBehaviorState->GetCalcParams()->velocityOfNext << "," <<
+				m_CurrentBehavior.maxVelocity << "," <<
+				m_Twist_raw.twist.linear.x << "," <<
+				m_Twist_cmd.twist.linear.x << "," <<
+				m_Ctrl_cmd.linear_velocity << "," <<
 				m_VehicleState.speed << "," <<
 				m_VehicleState.steer << "," <<
 				m_LocalPlanner.state.pos.x << "," << m_LocalPlanner.state.pos.y << "," << m_LocalPlanner.state.pos.z << "," << UtilityHNS::UtilityH::SplitPositiveAngle(m_LocalPlanner.state.pos.a)+M_PI << ",";
@@ -1214,6 +1238,7 @@ void PlannerX::SendLocalPlanningTopics()
 	PlannerHNS::RelativeInfo info;
 	PlannerHNS::PlanningHelpers::GetRelativeInfo(m_LocalPlanner.m_Path, m_LocalPlanner.state, info);
 	RosHelpers::ConvertFromPlannerHToAutowarePathFormat(m_LocalPlanner.m_Path, info.iBack, m_CurrentTrajectoryToSend);
+
 	closest_waypoint.data = 1;
 	pub_ClosestIndex.publish(closest_waypoint);
 	pub_LocalBasePath.publish(m_CurrentTrajectoryToSend);
