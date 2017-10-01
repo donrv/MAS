@@ -1653,7 +1653,7 @@ void PlanningHelpers::GenerateRecommendedSpeed(vector<WayPoint>& path, const dou
 	for(unsigned int i = 0 ; i < path.size(); i++)
 	{
 		double k_ratio = path.at(i).cost*10.0;
-		double local_max = max_speed == -1 ? path.at(i).v : max_speed;
+		double local_max = (path.at(i).v > 0 && max_speed > path.at(i).v) ? path.at(i).v : max_speed;
 
 		if(k_ratio >= 9.5)
 			v = local_max;
@@ -2316,7 +2316,7 @@ void PlanningHelpers::CalcContourPointsForDetectedObjects(const WayPoint& currPo
 	obj_list = res_list;
 }
 
-double PlanningHelpers::GetVelocityAhead(const std::vector<WayPoint>& path, const RelativeInfo& info, const double& reasonable_brake_distance)
+double PlanningHelpers::GetVelocityAhead(const std::vector<WayPoint>& path, const RelativeInfo& info, int& prev_index, const double& reasonable_brake_distance)
 {
 	if(path.size()==0) return 0;
 
@@ -2332,6 +2332,13 @@ double PlanningHelpers::GetVelocityAhead(const std::vector<WayPoint>& path, cons
 		if(path.at(local_i).v < min_v)
 			min_v = path.at(local_i).v;
 	}
+
+	if(local_i < prev_index && prev_index < path.size())
+	{
+		min_v = path.at(prev_index).v;
+	}
+	else
+		prev_index = local_i;
 
 	return min_v;
 }

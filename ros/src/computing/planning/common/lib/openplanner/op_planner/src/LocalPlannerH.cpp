@@ -19,6 +19,8 @@ namespace PlannerHNS
 
 LocalPlannerH::LocalPlannerH()
 {
+
+	m_PrevBrakingWayPoint = 0;
 	m_iSafeTrajectory = 0;
 	m_iCurrentTotalPathId = 0;
 	pLane = 0;
@@ -72,7 +74,7 @@ void LocalPlannerH::Init(const ControllerParams& ctrlParams, const PlannerHNS::P
  		m_params = params;
  		m_InitialFollowingDistance = m_params.minFollowingDistance;
 
- 		m_pidVelocity.Init(0.1, 0.003, 0.1);
+ 		m_pidVelocity.Init(0.1, 0.005, 0.01);
 		m_pidVelocity.Setlimit(m_params.maxSpeed, 0);
 
 		if(m_pCurrentBehaviorState)
@@ -589,10 +591,10 @@ void LocalPlannerH::InitPolygons()
  double LocalPlannerH::UpdateVelocityDirectlyToTrajectory(const BehaviorState& beh, const VehicleState& CurrStatus, const double& dt)
  {
 	RelativeInfo info, total_info;
-	PlanningHelpers::GetRelativeInfo(m_TotalPath.at(m_iCurrentTotalPathId), state, total_info);
+	PlanningHelpers::GetRelativeInfo(m_TotalOriginalPath.at(m_iCurrentTotalPathId), state, total_info);
 	PlanningHelpers::GetRelativeInfo(m_Path, state, info);
-	double average_braking_distance = -pow(CurrStatus.speed, 2)/(m_CarInfo.max_deceleration) ;
-	double max_velocity	= PlannerHNS::PlanningHelpers::GetVelocityAhead(m_TotalPath.at(m_iCurrentTotalPathId), total_info, average_braking_distance);
+	double average_braking_distance = -pow(CurrStatus.speed, 2)/(m_CarInfo.max_deceleration) + 5;
+	double max_velocity	= PlannerHNS::PlanningHelpers::GetVelocityAhead(m_TotalOriginalPath.at(m_iCurrentTotalPathId), total_info, m_PrevBrakingWayPoint, average_braking_distance);
 
 	unsigned int point_index = 0;
 	double critical_long_front_distance = 2.0;
@@ -691,6 +693,8 @@ void LocalPlannerH::InitPolygons()
 		{
 			m_Path.at(i).v = desiredVelocity;
 		}
+
+		return desiredVelocity;
 	}
 	else
 	{
@@ -706,6 +710,7 @@ void LocalPlannerH::InitPolygons()
  {
 	 if(m_pCurrentBehaviorState->GetCalcParams()->bNewGlobalPath)
 		{
+		 m_PrevBrakingWayPoint = 0;
 			m_TotalOriginalPath.at(m_iCurrentTotalPathId).at(m_TotalOriginalPath.at(m_iCurrentTotalPathId).size()-1).v = 0;
 			PlanningHelpers::GenerateRecommendedSpeed(m_TotalOriginalPath.at(m_iCurrentTotalPathId), m_CarInfo.max_speed_forward, m_pCurrentBehaviorState->m_pParams->speedProfileFactor);
 		}

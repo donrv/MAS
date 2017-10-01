@@ -43,6 +43,7 @@ public:
 	double m_CostCalculationTime;
 	double m_BehaviorGenTime;
 	double m_RollOutsGenerationTime;
+	int m_PrevBrakingWayPoint;
 
 	BehaviorStateMachine* 		m_pCurrentBehaviorState;
 	ForwardState * 				m_pGoToGoalState;
