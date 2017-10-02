@@ -1100,6 +1100,18 @@ void PlannerX::LogLocalPlanningInfo(double dt)
 	//		str_out << "LocalPath_";
 	//		PlannerHNS::PlanningHelpers::WritePathToFile(str_out.str(), m_LocalPlanner.m_OriginalLocalPath);
 	//	}
+
+//	for(unsigned int i=0; i < m_LocalPlanner.m_TotalOriginalPath.size(); i++)
+//		{
+//			std::ostringstream str_out;
+//			str_out << UtilityHNS::UtilityH::GetHomeDirectory();
+//			str_out << UtilityHNS::DataRW::LoggingMainfolderName;
+//			str_out << UtilityHNS::DataRW::GlobalPathLogFolderName;
+//			str_out << "GlobalPath_";
+//			str_out << i;
+//			str_out << "_";
+//			PlannerHNS::PlanningHelpers::WritePathToFile(str_out.str(), m_LocalPlanner.m_TotalOriginalPath.at(i));
+//		}
 }
 
 void PlannerX::VisualizeLocalPlanner()

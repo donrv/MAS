@@ -1653,7 +1653,7 @@ void PlanningHelpers::GenerateRecommendedSpeed(vector<WayPoint>& path, const dou
 	for(unsigned int i = 0 ; i < path.size(); i++)
 	{
 		double k_ratio = path.at(i).cost*10.0;
-		double local_max = (path.at(i).v > 0 && max_speed > path.at(i).v) ? path.at(i).v : max_speed;
+		double local_max = (path.at(i).v >= 0 && max_speed > path.at(i).v) ? path.at(i).v : max_speed;
 
 		if(k_ratio >= 9.5)
 			v = local_max;

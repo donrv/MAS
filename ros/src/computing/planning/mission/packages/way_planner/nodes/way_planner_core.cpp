@@ -64,7 +64,7 @@ way_planner_core::way_planner_core()
 	m_bFirstStart = false;
 	m_NextAction = PlannerHNS::WAITING_ACTION;
 	m_PrevAction = PlannerHNS::WAITING_ACTION;
-	m_SlowDownFactor = 3.5;
+	m_SlowDownFactor = 11.0;
 	//bStartPos = false;
 	//bGoalPos = false;
 	//bUsingCurrentPose = false;

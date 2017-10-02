@@ -50,7 +50,7 @@ AlternativeVisualizer::AlternativeVisualizer()
 	m_VehicleCurrentStateSteer = 0;
 	m_VehicleTargetStateAccelerator = 0;
 	m_VehicleTargetStateBrake = 0;
-	m_MaxVelocity = 35.0;
+	m_MaxVelocity = 40.0;
 	m_MaxPedalValue = 256;
 	m_MaxAccelStroke = 1700;
 	m_MaxBrakeStroke = 4095;
@@ -247,7 +247,7 @@ void AlternativeVisualizer::DrawInfo(const int& centerX, const int& centerY, con
 	glTranslated(centerX+95 - left_shift, verticalTranslation+100, 0);
 	glColor3f(0.8, 0.1, 0.7);
 	std::ostringstream v_out ;
-	v_out.precision(2);
+	v_out.precision(3);
 	v_out << "T: ";
 	v_out <<  speed;
 	DrawingHelpers::DrawString(0, 0, GLUT_BITMAP_TIMES_ROMAN_24, (char*)v_out.str().c_str());
@@ -262,7 +262,7 @@ void AlternativeVisualizer::DrawInfo(const int& centerX, const int& centerY, con
 	glTranslated(centerX+95 - left_shift + 100, verticalTranslation+100, 0);
 	glColor3f(0.8, 0.1, 0.7);
 	std::ostringstream v_out_acc ;
-	v_out_acc.precision(2);
+	v_out_acc.precision(3);
 	v_out_acc << "Acc: ";
 	v_out_acc <<  accPedal;
 	DrawingHelpers::DrawString(0, 0, GLUT_BITMAP_TIMES_ROMAN_24, (char*)v_out_acc.str().c_str());
@@ -277,7 +277,7 @@ void AlternativeVisualizer::DrawInfo(const int& centerX, const int& centerY, con
 	glTranslated(centerX+95 - left_shift + 210, verticalTranslation+100, 0);
 	glColor3f(0.8, 0.1, 0.7);
 	std::ostringstream v_out_brake ;
-	v_out_brake.precision(2);
+	v_out_brake.precision(3);
 	v_out_brake << "Brk: ";
 	v_out_brake <<  brakePedal;
 	DrawingHelpers::DrawString(0, 0, GLUT_BITMAP_TIMES_ROMAN_24, (char*)v_out_brake.str().c_str());
@@ -325,7 +325,7 @@ void AlternativeVisualizer::DrawInfo(const int& centerX, const int& centerY, con
 	glTranslated(centerX-left_shift-10, verticalTranslation+85, 0);
 	glColor3f(0.8, 0.1, 0.7);
 	std::ostringstream str_out_curr ;
-	str_out_curr.precision(2);
+	str_out_curr.precision(3);
 	str_out_curr <<  m_VehicleTargetStateSteer*RAD2DEG;
 	DrawingHelpers::DrawString(0, 0, GLUT_BITMAP_TIMES_ROMAN_24, (char*)str_out_curr.str().c_str());
 	glPopMatrix();
@@ -339,7 +339,7 @@ void AlternativeVisualizer::DrawInfo(const int& centerX, const int& centerY, con
 	glTranslated(centerX+95 - left_shift, verticalTranslation+100, 0);
 	glColor3f(0.8, 0.1, 0.7);
 	std::ostringstream v_out_curr ;
-	v_out_curr.precision(2);
+	v_out_curr.precision(3);
 	v_out_curr << "A: ";
 	v_out_curr <<  speed;
 	DrawingHelpers::DrawString(0, 0, GLUT_BITMAP_TIMES_ROMAN_24, (char*)v_out_curr.str().c_str());

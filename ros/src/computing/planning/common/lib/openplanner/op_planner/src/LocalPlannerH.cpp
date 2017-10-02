@@ -74,7 +74,7 @@ void LocalPlannerH::Init(const ControllerParams& ctrlParams, const PlannerHNS::P
  		m_params = params;
  		m_InitialFollowingDistance = m_params.minFollowingDistance;
 
- 		m_pidVelocity.Init(0.1, 0.005, 0.01);
+ 		m_pidVelocity.Init(0.005, 0.005, 0.05);
 		m_pidVelocity.Setlimit(m_params.maxSpeed, 0);
 
 		if(m_pCurrentBehaviorState)
@@ -710,9 +710,12 @@ void LocalPlannerH::InitPolygons()
  {
 	 if(m_pCurrentBehaviorState->GetCalcParams()->bNewGlobalPath)
 		{
-		 m_PrevBrakingWayPoint = 0;
-			m_TotalOriginalPath.at(m_iCurrentTotalPathId).at(m_TotalOriginalPath.at(m_iCurrentTotalPathId).size()-1).v = 0;
+		 	m_PrevBrakingWayPoint = 0;
+		 	PlanningHelpers::FixPathDensity(m_TotalOriginalPath.at(m_iCurrentTotalPathId), m_pCurrentBehaviorState->m_pParams->pathDensity);
+		 	PlanningHelpers::SmoothPath(m_TotalOriginalPath.at(m_iCurrentTotalPathId), 0.49, 0.25, 0.05);
+		 	m_TotalOriginalPath.at(m_iCurrentTotalPathId).at(m_TotalOriginalPath.at(m_iCurrentTotalPathId).size()-1).v = 0;
 			PlanningHelpers::GenerateRecommendedSpeed(m_TotalOriginalPath.at(m_iCurrentTotalPathId), m_CarInfo.max_speed_forward, m_pCurrentBehaviorState->m_pParams->speedProfileFactor);
+
 		}
 
 		 m_TotalPath.clear();

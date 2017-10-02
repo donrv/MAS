@@ -1,6 +1,6 @@
 <!-- -->
 <launch>
-	<arg name="maxVelocity" 				default="-1" />
+	<arg name="maxVelocity" 				default="5" />
 	<arg name="minVelocity" 				default="0.0" />	
 	<arg name="maxLocalPlanDistance" 		default="40" />
 	<arg name="samplingTipMargin" 			default="4"  /> 
