@@ -593,7 +593,7 @@ void LocalPlannerH::InitPolygons()
 	RelativeInfo info, total_info;
 	PlanningHelpers::GetRelativeInfo(m_TotalOriginalPath.at(m_iCurrentTotalPathId), state, total_info);
 	PlanningHelpers::GetRelativeInfo(m_Path, state, info);
-	double average_braking_distance = -pow(CurrStatus.speed, 2)/(m_CarInfo.max_deceleration) + 5;
+	double average_braking_distance = -pow(CurrStatus.speed, 2)/(m_CarInfo.max_deceleration);
 	double max_velocity	= PlannerHNS::PlanningHelpers::GetVelocityAhead(m_TotalOriginalPath.at(m_iCurrentTotalPathId), total_info, m_PrevBrakingWayPoint, average_braking_distance);
 
 	unsigned int point_index = 0;
@@ -713,8 +713,9 @@ void LocalPlannerH::InitPolygons()
 		 	m_PrevBrakingWayPoint = 0;
 		 	PlanningHelpers::FixPathDensity(m_TotalOriginalPath.at(m_iCurrentTotalPathId), m_pCurrentBehaviorState->m_pParams->pathDensity);
 		 	PlanningHelpers::SmoothPath(m_TotalOriginalPath.at(m_iCurrentTotalPathId), 0.49, 0.25, 0.05);
-		 	m_TotalOriginalPath.at(m_iCurrentTotalPathId).at(m_TotalOriginalPath.at(m_iCurrentTotalPathId).size()-1).v = 0;
+		 	
 			PlanningHelpers::GenerateRecommendedSpeed(m_TotalOriginalPath.at(m_iCurrentTotalPathId), m_CarInfo.max_speed_forward, m_pCurrentBehaviorState->m_pParams->speedProfileFactor);
+			m_TotalOriginalPath.at(m_iCurrentTotalPathId).at(m_TotalOriginalPath.at(m_iCurrentTotalPathId).size()-1).v = 0;
 
 		}
 

@@ -106,7 +106,7 @@ void PurePursuitNode::run()
     }
 
 
-    if(pp_.getTrajectorySize() < 10)
+    if(pp_.getTrajectorySize() < 5)
     {
     	  geometry_msgs::TwistStamped ts;
     	  ts.header.stamp = ros::Time::now();
