@@ -131,6 +131,7 @@ protected:
 	ros::Publisher pub_CurrPoseRviz;
 	ros::Publisher pub_LocalTrajectoriesRviz;
 	ros::Publisher pub_BehaviorStateRviz;
+	ros::Publisher pub_PointerBehaviorStateRviz;
 
 	// define subscribers.
 	ros::Subscriber sub_initialpose;

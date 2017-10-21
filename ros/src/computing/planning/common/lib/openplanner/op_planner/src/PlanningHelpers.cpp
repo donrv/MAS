@@ -934,9 +934,15 @@ void PlanningHelpers::CreateManualBranch(std::vector<WayPoint>& path, const int&
 	for(unsigned int i=0; i < path.size(); i++)
 	{
 		if(direction == FORWARD_LEFT_DIR)
-			path.at(i).behavior = BRANCH_LEFT_STATE;
+		{
+			path.at(i).state = INITIAL_STATE;
+			path.at(i).beh_state = BEH_BRANCH_LEFT_STATE;
+		}
 		if(direction == FORWARD_RIGHT_DIR)
-			path.at(i).behavior = BRANCH_RIGHT_STATE;
+		{
+			path.at(i).state = INITIAL_STATE;
+			path.at(i).beh_state = BEH_BRANCH_RIGHT_STATE;
+		}
 	}
 
 

@@ -322,6 +322,7 @@ double PlannerH::PlanUsingDP(const WayPoint& start,
 {
 	PlannerHNS::WayPoint* pStart = PlannerHNS::MappingHelpers::GetClosestWaypointFromMap(start, map);
 	PlannerHNS::WayPoint* pGoal = PlannerHNS::MappingHelpers::GetClosestWaypointFromMap(goalPos, map);
+	bool bEnableGoalBranching = false;
 
 	if(!pStart ||  !pGoal)
 	{

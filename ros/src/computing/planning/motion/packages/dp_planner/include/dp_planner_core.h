@@ -49,6 +49,7 @@
 #include <tf/tf.h>
 #include <std_msgs/Int8.h>
 #include <std_msgs/Int32.h>
+#include <std_msgs/Float32.h>
 #include "waypoint_follower/libwaypoint_follower.h"
 #include "autoware_msgs/LaneArray.h"
 #include "autoware_msgs/CanInfo.h"
@@ -111,7 +112,7 @@ protected:
 	int m_frequency;
 
 protected:
-	//PlannerHNS::BehaviorPrediction m_ParticlePred;
+	PlannerHNS::BehaviorPrediction m_ParticlePred;
 	SimulationNS::SimpleTracker m_ObstacleTracking;
 	PlannerHNS::LocalPlannerH m_LocalPlanner;
 
@@ -230,6 +231,7 @@ protected:
 	ros::Publisher pub_TestLineRviz;
 	ros::Publisher pub_BehaviorStateRviz;
 	ros::Publisher pub_SafetyBorderRviz;
+	ros::Publisher pub_VelocityRviz;
 	ros::Publisher pub_cluster_cloud;
 	ros::Publisher pub_SimuBoxPose;
 

@@ -104,6 +104,7 @@ public:
 	//std::vector<TrafficLight> m_TrafficLights;
 
 	UtilityHNS::PIDController 	m_pidVelocity;
+	UtilityHNS::PIDController 	m_pidStopping;
 
 public:
 

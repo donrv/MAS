@@ -134,6 +134,7 @@ public:
 		cv::setIdentity(m_filter.processNoiseCov, cv::Scalar::all(0.0001));
 		cv::setIdentity(m_filter.errorCovPost, cv::Scalar::all(0.075));
 
+
 		m_filter.predict();
 
 		errorSmoother.Update(a);

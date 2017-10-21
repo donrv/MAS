@@ -39,6 +39,7 @@ enum SHIFT_POS {SHIFT_POS_PP = 0x60, SHIFT_POS_RR = 0x40, SHIFT_POS_NN = 0x20,
 enum ACTION_TYPE {FORWARD_ACTION, BACKWARD_ACTION, STOP_ACTION, LEFT_TURN_ACTION,
 	RIGHT_TURN_ACTION, U_TURN_ACTION, SWERVE_ACTION, OVERTACK_ACTION, START_ACTION, SLOWDOWN_ACTION, CHANGE_DESTINATION, WAITING_ACTION, DESTINATION_REACHED,  UNKOWN_ACTION};
 
+enum BEH_STATE_TYPE {BEH_FORWARD_STATE=0,BEH_STOPPING_STATE=1, BEH_BRANCH_LEFT_STATE=2, BEH_BRANCH_RIGHT_STATE=3, BEH_YIELDING_STATE=4, BEH_ACCELERATING_STATE=5, BEH_SLOWDOWN_STATE=6};
 
 class Lane;
 class TrafficLight;
@@ -371,7 +372,8 @@ public:
 	int 		RightLaneId;
 	int 		stopLineID;
 	DIRECTION_TYPE bDir;
-	STATE_TYPE	behavior;
+	STATE_TYPE	state;
+	BEH_STATE_TYPE beh_state;
 	int 		iOriginalIndex;
 
 	Lane* pLane;
@@ -400,7 +402,8 @@ public:
 		collisionCost = 0;
 		laneChangeCost = 0;
 		stopLineID = -1;
-		behavior = INITIAL_STATE;
+		state = INITIAL_STATE;
+		beh_state = BEH_STOPPING_STATE;
 		iOriginalIndex = 0;
 	}
 
@@ -427,7 +430,8 @@ public:
 		laneChangeCost = 0;
 		stopLineID = -1;
 		iOriginalIndex = 0;
-		behavior = INITIAL_STATE;
+		state = INITIAL_STATE;
+		beh_state = BEH_STOPPING_STATE;
 	}
 };
 
@@ -718,6 +722,7 @@ public:
 	OBSTACLE_TYPE t;
 	WayPoint center;
 	WayPoint predicted_center;
+	WayPoint noisy_center;
 	STATE_TYPE predicted_behavior;
 	std::vector<GPSPoint> contour;
 	std::vector<std::vector<WayPoint> > predTrajectories;
@@ -726,6 +731,10 @@ public:
 	double l;
 	double h;
 	double distance_to_center;
+
+	double actual_speed;
+	double actual_yaw;
+
 	bool bDirection;
 	bool bVelocity;
 	int acceleration;
@@ -742,6 +751,8 @@ public:
 		t = GENERAL_OBSTACLE;
 		distance_to_center = 0;
 		predicted_behavior = INITIAL_STATE;
+		actual_speed = 0;
+		actual_yaw = 0;
 	}
 
 };
@@ -768,6 +779,8 @@ public:
 	double 	smoothingSmoothWeight;
 	double 	smoothingToleranceError;
 
+
+	double additionalBrakingDistance;
 	double verticalSafetyDistance;
 	double horizontalSafetyDistancel;
 
@@ -799,6 +812,7 @@ public:
 		smoothingSmoothWeight			= 0.2;
 		smoothingToleranceError			= 0.05;
 
+		additionalBrakingDistance		= 10.0;
 		verticalSafetyDistance 			= 0.0;
 		horizontalSafetyDistancel		= 0.0;
 

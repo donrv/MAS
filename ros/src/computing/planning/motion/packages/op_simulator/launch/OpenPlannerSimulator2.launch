@@ -5,15 +5,15 @@
 	<arg name="length" 						default="4.2" />
 	<arg name="wheelBaseLength" 			default="2.7" />
 	<arg name="turningRadius"				default="5.2" />
-	<arg name="maxSteerAngle" 				default="0.5" />
+	<arg name="maxSteerAngle" 				default="0.45" />
 				
 	<arg name="steeringDelay" 				default="1.2" />
 	<arg name="minPursuiteDistance" 		default="3.0" />		
 	
-	<arg name="maxVelocity" 				default="1"  />
+	<arg name="maxVelocity" 				default="4"  />
 	<arg name="minVelocity" 				default="0.2"  />
-	<arg name="maxAcceleration"				default="0.6"   />
-	<arg name="maxDeceleration"				default="-1.0"   />
+	<arg name="maxAcceleration"				default="2.0"   />
+	<arg name="maxDeceleration"				default="-3.0"   />
 	
 	<arg name="enableRvizPoseEst"			default="false"   />
 	<arg name="enableRandomGoal"			default="false"   />

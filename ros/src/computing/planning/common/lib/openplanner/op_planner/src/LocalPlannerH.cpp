@@ -77,6 +77,9 @@ void LocalPlannerH::Init(const ControllerParams& ctrlParams, const PlannerHNS::P
  		m_pidVelocity.Init(0.005, 0.005, 0.05);
 		m_pidVelocity.Setlimit(m_params.maxSpeed, 0);
 
+		m_pidStopping.Init(0.1, 0.05, 0.1);
+		m_pidStopping.Setlimit(m_params.horizonDistance, 0);
+
 		if(m_pCurrentBehaviorState)
 			m_pCurrentBehaviorState->SetBehaviorsParams(&m_params);
 
@@ -112,6 +115,10 @@ void LocalPlannerH::InitBehaviorStates()
 
 	m_pStopSignWaitState->decisionMakingTime = 5.0;
 	m_pStopSignWaitState->InsertNextState(m_pStopSignStopState);
+
+	m_pFollowState->InsertNextState(m_pStopState);
+	m_pFollowState->InsertNextState(m_pTrafficLightStopState);
+	m_pFollowState->InsertNextState(m_pStopSignStopState);
 
 	m_pAvoidObstacleState->decisionMakingTime = 0.1;
 
@@ -593,7 +600,7 @@ void LocalPlannerH::InitPolygons()
 	RelativeInfo info, total_info;
 	PlanningHelpers::GetRelativeInfo(m_TotalOriginalPath.at(m_iCurrentTotalPathId), state, total_info);
 	PlanningHelpers::GetRelativeInfo(m_Path, state, info);
-	double average_braking_distance = -pow(CurrStatus.speed, 2)/(m_CarInfo.max_deceleration);
+	double average_braking_distance = -pow(CurrStatus.speed, 2)/(m_CarInfo.max_deceleration) + m_params.additionalBrakingDistance;
 	double max_velocity	= PlannerHNS::PlanningHelpers::GetVelocityAhead(m_TotalOriginalPath.at(m_iCurrentTotalPathId), total_info, m_PrevBrakingWayPoint, average_braking_distance);
 
 	unsigned int point_index = 0;
@@ -609,25 +616,16 @@ void LocalPlannerH::InitPolygons()
 	{
 		PlanningHelpers::GetFollowPointOnTrajectory(m_Path, info, beh.stopDistance - critical_long_front_distance, point_index);
 
-		double inc = CurrStatus.speed;
-		int iRange = point_index - info.iBack;
-		if(iRange > 0)
-			inc = inc / (double)iRange;
-		else
-			inc = 0;
-
-		double target_velocity = CurrStatus.speed - inc;
-
-		double e = 0 - CurrStatus.speed;
-		//m_pidVelocity.Setlimit(0, 0);
-		double desiredVelocity = m_pidVelocity.getPID(e);
+		double e = -beh.stopDistance;
+		double desiredVelocity = m_pidStopping.getPID(e);
 
 		for(unsigned int i =  info.iBack; i < point_index; i++)
 		{
 			 if(i < m_Path.size() && i >= 0)
 				 m_Path.at(i).v = desiredVelocity;
-			 target_velocity -= inc;
 		}
+
+		return desiredVelocity;
 	}
 	else if(beh.state == FOLLOW_STATE)
 	{
@@ -635,46 +633,33 @@ void LocalPlannerH::InitPolygons()
 		if(targe_acceleration <= 0 &&  targe_acceleration > m_CarInfo.max_deceleration/2.0)
 		{
 			double target_velocity = (targe_acceleration * dt) + CurrStatus.speed;
-			if(m_pCurrentBehaviorState->GetCalcParams()->iCurrSafeTrajectory != m_pCurrentBehaviorState->GetCalcParams()->iCentralTrajectory)
-				target_velocity*=AVOIDANCE_SPEED_FACTOR;
 
 			double e = target_velocity - CurrStatus.speed;
-			//m_pidVelocity.Setlimit(target_velocity, 0);
 			double desiredVelocity = m_pidVelocity.getPID(e);
 
 			for(unsigned int i = info.iBack; i < m_Path.size(); i++)
 			{
-				m_Path.at(i).v = target_velocity;
+				if(i < m_Path.size() && i >= 0)
+					m_Path.at(i).v = desiredVelocity;
 			}
 
+			return desiredVelocity;
 			//cout << "Accelerate -> Target V: " << target_velocity << ", Brake D: " <<  average_braking_distance << ", Acceleration: " << targe_acceleration << endl;
 		}
 		else
 		{
 			WayPoint pursuite_point = PlanningHelpers::GetFollowPointOnTrajectory(m_Path, info, beh.followDistance - critical_long_front_distance, point_index);
-			double inc = CurrStatus.speed;
-			int iRange = point_index - info.iBack;
 
-			if(iRange > 0)
-				inc = inc / (double)iRange;
-			else
-				inc = 0;
+			double e = beh.followDistance - m_params.minFollowingDistance;
+			double desiredVelocity = m_pidStopping.getPID(e);
 
-			double target_velocity = CurrStatus.speed - inc;
 			for(unsigned int i =  info.iBack; i < point_index; i++)
 			{
-				 if(i < m_Path.size() && i >= 0)
-				 {
-					 target_velocity = target_velocity < 0 ? 0 : target_velocity;
-					 if(m_pCurrentBehaviorState->GetCalcParams()->iCurrSafeTrajectory == m_pCurrentBehaviorState->GetCalcParams()->iCentralTrajectory)
-						 m_Path.at(i).v = target_velocity;
-					 else
-						 m_Path.at(i).v = target_velocity*AVOIDANCE_SPEED_FACTOR;
-				 }
-
-				 target_velocity -= inc;
+				if(i < m_Path.size() && i >= 0)
+					m_Path.at(i).v = desiredVelocity;
 			}
 
+			return desiredVelocity;
 			//cout << "Decelerate -> Target V: " << target_velocity << ", Brake D: " <<  average_braking_distance << ", Start I" << info.iBack << endl;
 		}
 
@@ -686,7 +671,6 @@ void LocalPlannerH::InitPolygons()
 			target_velocity*=AVOIDANCE_SPEED_FACTOR;
 
 		double e = target_velocity - CurrStatus.speed;
-		//m_pidVelocity.Setlimit(target_velocity, 0);
 		double desiredVelocity = m_pidVelocity.getPID(e);
 
 		for(unsigned int i = info.iBack; i < m_Path.size(); i++)
@@ -701,6 +685,8 @@ void LocalPlannerH::InitPolygons()
 		double target_velocity = 0;
 		for(unsigned int i = info.iBack; i < m_Path.size(); i++)
 			m_Path.at(i).v = target_velocity;
+
+		return target_velocity;
 	}
 
 	return max_velocity;

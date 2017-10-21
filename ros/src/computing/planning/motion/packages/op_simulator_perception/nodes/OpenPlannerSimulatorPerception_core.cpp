@@ -38,11 +38,17 @@
 #include <pcl/io/io.h>
 #include <pcl/io/pcd_io.h>
 #include <pcl/point_types.h>
+#include <boost/random.hpp>
+#include <boost/math/distributions/normal.hpp>
 
 using namespace std;
 
 namespace OpenPlannerSimulatorPerceptionNS
 {
+
+typedef boost::mt19937 ENG;
+typedef boost::normal_distribution<double> NormalDIST;
+typedef boost::variate_generator<ENG, NormalDIST> VariatGEN;
 
 OpenPlannerSimulatorPerception::OpenPlannerSimulatorPerception()
 {
@@ -77,15 +83,18 @@ OpenPlannerSimulatorPerception::~OpenPlannerSimulatorPerception()
 void OpenPlannerSimulatorPerception::callbackGetSimuData(const geometry_msgs::PoseArray &msg)
 {
 	int obj_id = -1;
+	double actual_speed = 0;
+	double actual_steering  = 0;
 	if(msg.poses.size() > 0 )
 	{
 		obj_id = msg.poses.at(0).position.x;
-
+		actual_speed = msg.poses.at(0).position.y;
+		actual_steering = msg.poses.at(0).position.z;
 	}
 
 //	ROS_INFO("Obj ID = %d", obj_id);
 
-	if(obj_id < 0)
+	if(obj_id <= 0)
 		return;
 
 	int index = -1;
@@ -100,6 +109,7 @@ void OpenPlannerSimulatorPerception::callbackGetSimuData(const geometry_msgs::Po
 
 	autoware_msgs::CloudCluster c = GenerateSimulatedObstacleCluster(msg.poses.at(2).position.x, msg.poses.at(2).position.y, msg.poses.at(2).position.z, 50, msg.poses.at(1));
 	c.id = obj_id;
+	c.score = actual_speed;
 
 	if(index >= 0) // update existing
 	{
@@ -120,11 +130,28 @@ autoware_msgs::CloudCluster OpenPlannerSimulatorPerception::GenerateSimulatedObs
 {
 	autoware_msgs::CloudCluster cluster;
 
-	cluster.centroid_point.point.x = centerPose.position.x;
-	cluster.centroid_point.point.y = centerPose.position.y;
-	cluster.centroid_point.point.z = centerPose.position.z;
+	timespec t;
+	UtilityHNS::UtilityH::GetTickCount(t);
+	srand(t.tv_nsec);
+
+	ENG eng(t.tv_nsec);
+	NormalDIST dist_x(0, 0.5);
+	VariatGEN gen_x(eng, dist_x);
+
+//	cluster.centroid_point.point.x = centerPose.position.x + gen_x();
+//	cluster.centroid_point.point.y = centerPose.position.y + gen_x();
+//	cluster.centroid_point.point.z = centerPose.position.z + gen_x();
+
+	cluster.centroid_point.point.x = centerPose.position.x ;
+	cluster.centroid_point.point.y = centerPose.position.y ;
+	cluster.centroid_point.point.z = centerPose.position.z ;
+
+	cluster.avg_point.point.x = centerPose.position.x;
+	cluster.avg_point.point.y = centerPose.position.y;
+	cluster.avg_point.point.z = centerPose.position.z;
+
 	double yaw_angle = tf::getYaw(centerPose.orientation);
-	//cout << "Obstacle Direction Angle: " << yaw_angle << endl;
+	cluster.estimated_angle = yaw_angle;
 
 	cluster.dimensions.x = length;
 	cluster.dimensions.y = width;
@@ -132,9 +159,8 @@ autoware_msgs::CloudCluster OpenPlannerSimulatorPerception::GenerateSimulatedObs
 	pcl::PointCloud<pcl::PointXYZ> point_cloud;
 
 	PlannerHNS::Mat3 rotationMat(yaw_angle);
-	PlannerHNS::Mat3 translationMat(centerPose.position.x, centerPose.position.y);
+	PlannerHNS::Mat3 translationMat(cluster.centroid_point.point.x, cluster.centroid_point.point.y);
 
-	timespec t;
 	for(int i=1; i < nPoints; i++)
 	{
 		UtilityHNS::UtilityH::GetTickCount(t);
@@ -181,7 +207,7 @@ autoware_msgs::CloudCluster OpenPlannerSimulatorPerception::GenerateSimulatedObs
 void OpenPlannerSimulatorPerception::MainLoop()
 {
 
-	ros::Rate loop_rate(25);
+	ros::Rate loop_rate(15);
 
 	while (ros::ok())
 	{

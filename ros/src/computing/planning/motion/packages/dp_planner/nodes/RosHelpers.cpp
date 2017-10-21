@@ -559,8 +559,10 @@ void RosHelpers::ConvertTrackedObjectsMarkers(const PlannerHNS::WayPoint& currSt
 				trackedObstacles.at(i).center.pos.a,1,1,1,1,centers.markers.size()*2+i,"InfoText", visualization_msgs::Marker::TEXT_VIEW_FACING);
 
 		int speed = (trackedObstacles.at(i).center.v*3.6);
+		int actual_speed = (trackedObstacles.at(i).actual_speed*3.6);
+
 		std::ostringstream str_out;
-		str_out << "(" << trackedObstacles.at(i).id << " , " << speed << ")";
+		str_out << trackedObstacles.at(i).id << " ( " << speed << " )";
 		text_mkr.text = str_out.str();
 
 		if(i < text_info.markers.size())
@@ -613,6 +615,8 @@ void RosHelpers::ConvertParticles(std::vector<PlannerHNS::WayPoint>& points, vis
 			mkr = CreateGenMarker(points.at(i).pos.x, points.at(i).pos.y,points.at(i).pos.z,points.at(i).pos.a,0,0,1,0.05,i,"Particles", visualization_msgs::Marker::ARROW);
 		else if(points.at(i).bDir == FORWARD_LEFT_DIR)
 			mkr = CreateGenMarker(points.at(i).pos.x, points.at(i).pos.y,points.at(i).pos.z,points.at(i).pos.a,0,0,0,0.05,i,"Particles", visualization_msgs::Marker::ARROW);
+//		else
+//			mkr = CreateGenMarker(points.at(i).pos.x, points.at(i).pos.y,points.at(i).pos.z,points.at(i).pos.a,1,1,1,0.5,i,"Particles", visualization_msgs::Marker::ARROW);
 
 		mkr.scale.x = 0.3;
 		part_mkrs.markers.push_back(mkr);
@@ -758,10 +762,17 @@ void RosHelpers::ConvertFromAutowareCloudClusterObstaclesToPlannerH(const Planne
 	{
 		PolygonGenerator polyGen;
 		PlannerHNS::DetectedObject obj;
-		obj.center.pos = GPSPoint(clusters.clusters.at(i).centroid_point.point.x,
+		obj.center.pos = PlannerHNS::GPSPoint(clusters.clusters.at(i).centroid_point.point.x,
 				clusters.clusters.at(i).centroid_point.point.y,
 				clusters.clusters.at(i).centroid_point.point.z,0);
-		//tf::getYaw(clusters.clusters.at(i).bounding_box.pose.orientation));
+
+		obj.noisy_center.pos = PlannerHNS::GPSPoint(clusters.clusters.at(i).avg_point.point.x,
+						clusters.clusters.at(i).avg_point.point.y,
+						clusters.clusters.at(i).avg_point.point.z,0);
+
+		//obj.actual_yaw = tf::getYaw(clusters.clusters.at(i).bounding_box.pose.orientation);
+		obj.actual_yaw = clusters.clusters.at(i).estimated_angle;
+		obj.actual_speed = clusters.clusters.at(i).score;
 
 		pcl::PointCloud<pcl::PointXYZ> point_cloud;
 		pcl::fromROSMsg(clusters.clusters.at(i).cloud, point_cloud);

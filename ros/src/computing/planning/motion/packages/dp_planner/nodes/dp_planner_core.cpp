@@ -118,10 +118,12 @@ PlannerX::PlannerX()
 	pub_TrackedObstaclesRviz = nh.advertise<jsk_recognition_msgs::BoundingBoxArray>("dp_planner_tracked_boxes", 1);
 	pub_LocalTrajectoriesRviz = nh.advertise<visualization_msgs::MarkerArray>("local_trajectories", 1);
 	pub_PredictedTrajectoriesRviz = nh.advertise<visualization_msgs::MarkerArray>("predicted_trajectories", 1);
-	//pub_ParticlesRviz = nh.advertise<visualization_msgs::MarkerArray>("prediction_particles", 1);
+	pub_ParticlesRviz = nh.advertise<visualization_msgs::MarkerArray>("prediction_particles", 1);
 	pub_TestLineRviz	= nh.advertise<visualization_msgs::MarkerArray>("testing_line", 1);
 	pub_BehaviorStateRviz = nh.advertise<visualization_msgs::Marker>("behavior_state", 1);
 	pub_SafetyBorderRviz  = nh.advertise<visualization_msgs::Marker>("safety_border", 1);
+	pub_VelocityRviz 			= nh.advertise<std_msgs::Float32>("lpvelocity_rviz", 1);
+
 	pub_cluster_cloud = nh.advertise<sensor_msgs::PointCloud2>("simu_points_cluster",1);
 	pub_SimuBoxPose	  = nh.advertise<geometry_msgs::PoseArray>("sim_box_pose_ego", 1);
 
@@ -759,7 +761,7 @@ void PlannerX::callbackGetVehicleStatus(const geometry_msgs::TwistStampedConstPt
 {
 	m_VehicleState.speed = msg->twist.linear.x;
 
-	if(fabs(msg->twist.linear.x) > 0.01)
+	if(fabs(msg->twist.linear.x) > 0.25)
 		m_VehicleState.steer = atan(m_LocalPlanner.m_CarInfo.wheel_base * msg->twist.angular.z/msg->twist.linear.x);
 
 	UtilityHNS::UtilityH::GetTickCount(m_VehicleState.tStamp);
@@ -1180,35 +1182,37 @@ void PlannerX::VisualizeLocalPlanner()
 	/**
 	 * Particle Filter Visualization
 	 */
-	//		std::vector<std::vector<PlannerHNS::WayPoint> > all_pred_paths;
-	//		std::vector<PlannerHNS::WayPoint> particles_points;
-	//		for(unsigned int i=0; i< m_ParticlePred.m_ParticleInfo.size(); i++)
-	//		{
-	//			all_pred_paths.insert(all_pred_paths.begin(), m_ParticlePred.m_ParticleInfo.at(i).pred_paths.begin(), m_ParticlePred.m_ParticleInfo.at(i).pred_paths.end());
-	//			for(unsigned int i_part=0; i_part < m_ParticlePred.m_ParticleInfo.at(i).particles.size(); i_part++)
-	//			{
-	//				PlannerHNS::WayPoint p_wp;
-	//				p_wp.pos = m_ParticlePred.m_ParticleInfo.at(i).particles.at(i_part).pose;
-	//				if(m_ParticlePred.m_ParticleInfo.at(i).particles.at(i_part).beh == PlannerHNS::STOPPING_STATE)
-	//					p_wp.bDir = PlannerHNS::STANDSTILL_DIR;
-	//				if(m_ParticlePred.m_ParticleInfo.at(i).particles.at(i_part).beh == PlannerHNS::FORWARD_STATE)
-	//					p_wp.bDir = PlannerHNS::FORWARD_DIR;
-	//				if(m_ParticlePred.m_ParticleInfo.at(i).particles.at(i_part).beh == PlannerHNS::YIELDING_STATE)
-	//					p_wp.bDir = PlannerHNS::BACKWARD_DIR;
-	//				if(m_ParticlePred.m_ParticleInfo.at(i).particles.at(i_part).beh == PlannerHNS::BRANCH_LEFT_STATE)
-	//					p_wp.bDir = PlannerHNS::FORWARD_LEFT_DIR;
-	//				if(m_ParticlePred.m_ParticleInfo.at(i).particles.at(i_part).beh == PlannerHNS::BRANCH_RIGHT_STATE)
-	//					p_wp.bDir = PlannerHNS::FORWARD_RIGHT_DIR;
-	//
-	//				particles_points.push_back(p_wp);
-	//			}
-	//		}
-	//
-	//		visualization_msgs::MarkerArray particles_mkrs;
-	//		RosHelpers::ConvertParticles(particles_points,particles_mkrs);
-	//		pub_ParticlesRviz.publish(particles_mkrs);
-	//		RosHelpers::ConvertPredictedTrqajectoryMarkers(all_pred_paths, m_PredictedTrajectoriesActual, m_PredictedTrajectoriesDummy);
-	//		pub_PredictedTrajectoriesRviz.publish(m_PredictedTrajectoriesActual);
+	std::vector<std::vector<PlannerHNS::WayPoint> > all_pred_paths;
+	std::vector<PlannerHNS::WayPoint> particles_points;
+	for(unsigned int i=0; i< m_ParticlePred.m_ParticleInfo.size(); i++)
+	{
+		all_pred_paths.insert(all_pred_paths.begin(), m_ParticlePred.m_ParticleInfo.at(i).pred_paths.begin(), m_ParticlePred.m_ParticleInfo.at(i).pred_paths.end());
+		for(unsigned int i_part=0; i_part < m_ParticlePred.m_ParticleInfo.at(i).particles.size(); i_part++)
+		{
+			PlannerHNS::WayPoint p_wp;
+			p_wp.pos = m_ParticlePred.m_ParticleInfo.at(i).particles.at(i_part).pose;
+			if(m_ParticlePred.m_ParticleInfo.at(i).particles.at(i_part).beh == PlannerHNS::BEH_STATE_TYPE::BEH_STOPPING_STATE)
+				p_wp.bDir = PlannerHNS::STANDSTILL_DIR;
+			if(m_ParticlePred.m_ParticleInfo.at(i).particles.at(i_part).beh == PlannerHNS::BEH_STATE_TYPE::BEH_FORWARD_STATE)
+				p_wp.bDir = PlannerHNS::FORWARD_DIR;
+//			if(m_ParticlePred.m_ParticleInfo.at(i).particles.at(i_part).beh == PlannerHNS::BEH_STATE_TYPE::BEH_YIELDING_STATE)
+//				p_wp.bDir = PlannerHNS::BACKWARD_DIR;
+			if(m_ParticlePred.m_ParticleInfo.at(i).particles.at(i_part).beh == PlannerHNS::BEH_STATE_TYPE::BEH_BRANCH_LEFT_STATE)
+				p_wp.bDir = PlannerHNS::FORWARD_LEFT_DIR;
+			if(m_ParticlePred.m_ParticleInfo.at(i).particles.at(i_part).beh == PlannerHNS::BEH_STATE_TYPE::BEH_BRANCH_RIGHT_STATE)
+				p_wp.bDir = PlannerHNS::FORWARD_RIGHT_DIR;
+
+			particles_points.push_back(p_wp);
+		}
+	}
+
+	visualization_msgs::MarkerArray particles_mkrs;
+	RosHelpers::ConvertParticles(particles_points,particles_mkrs);
+	cout << "Particles Num: " << particles_mkrs.markers.size() << endl;
+	pub_ParticlesRviz.publish(particles_mkrs);
+
+	RosHelpers::ConvertPredictedTrqajectoryMarkers(all_pred_paths, m_PredictedTrajectoriesActual, m_PredictedTrajectoriesDummy);
+	pub_PredictedTrajectoriesRviz.publish(m_PredictedTrajectoriesActual);
 }
 
 void PlannerX::SendLocalPlanningTopics()
@@ -1255,6 +1259,10 @@ void PlannerX::SendLocalPlanningTopics()
 	pub_ClosestIndex.publish(closest_waypoint);
 	pub_LocalBasePath.publish(m_CurrentTrajectoryToSend);
 	pub_LocalPath.publish(m_CurrentTrajectoryToSend);
+
+	std_msgs::Float32 vel_rviz;
+	vel_rviz.data = (float)m_VehicleState.speed*3.6;
+	pub_VelocityRviz.publish(vel_rviz);
 
 }
 
@@ -1325,13 +1333,12 @@ void PlannerX::PlannerMainLoop()
 			/**
 			 * Testing Particle Filter Behavior Prediction Method
 			 */
-			/*
-			 timespec prediction_time;
-			 UtilityHNS::UtilityH::GetTickCount(prediction_time);
-			 m_ParticlePred.DoOneStep(allObstacles, m_Map);
-			 double pred_time = UtilityHNS::UtilityH::GetTimeDiffNow(prediction_time);
-			 cout << "Detected Particles : " << m_ParticlePred.m_ParticleInfo.size() << ", Time:" << pred_time << endl;
-			*/
+//			 timespec prediction_time;
+//			 UtilityHNS::UtilityH::GetTickCount(prediction_time);
+//			 m_ParticlePred.DoOneStep(m_AllObstacles, m_Map);
+//			 double pred_time = UtilityHNS::UtilityH::GetTimeDiffNow(prediction_time);
+//			 cout << "Detected Particles : " << m_ParticlePred.m_ParticleInfo.size() << ", Time:" << pred_time << endl;
+
 
 			PlannerHNS::PlanningHelpers::m_TestingClosestPoint.clear();
 

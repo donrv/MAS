@@ -53,6 +53,8 @@ PurePursuitNode::PurePursuitNode()
 
   // initialize for PurePursuit
   pp_.setLinearInterpolationParameter(is_linear_interpolation_);
+
+  m_prev_kappa = 0;
 }
 
 // Destructor
@@ -89,7 +91,7 @@ void PurePursuitNode::run()
 {
 
 
-	 ROS_INFO_STREAM("pure pursuit start");
+	// ROS_INFO_STREAM("pure pursuit start");
 
 
   ros::Rate loop_rate(LOOP_RATE_);
@@ -100,7 +102,7 @@ void PurePursuitNode::run()
 
     if (!is_pose_set_ || !is_waypoint_set_ || !is_velocity_set_ || !is_config_set_)
     {
-      ROS_WARN("Necessary topics are not subscribed yet ... ");
+      //ROS_WARN("Necessary topics are not subscribed yet ... ");
       loop_rate.sleep();
       continue;
     }
@@ -127,8 +129,16 @@ void PurePursuitNode::run()
 
 		double kappa = 0;
 		bool can_get_curvature = pp_.canGetCurvature(&kappa);
+
+//		if(can_get_curvature == false || current_linear_velocity_)
+//			kappa = m_prev_kappa;
+//		else
+//			m_prev_kappa = kappa;
+
 		publishTwistStamped(can_get_curvature, kappa);
 		publishControlCommandStamped(can_get_curvature, kappa);
+
+		std::cout << "can_get_curvature: " << can_get_curvature << ", Kappa: " << kappa << ", Vel: " << command_linear_velocity_ << std::endl;
 
 		// for visualization with Rviz
 		pub11_.publish(displayNextWaypoint(pp_.getPoseOfNextWaypoint()));
@@ -149,9 +159,8 @@ void PurePursuitNode::publishTwistStamped(const bool &can_get_curvature, const d
   geometry_msgs::TwistStamped ts;
   ts.header.stamp = ros::Time::now();
   ts.twist.linear.x = can_get_curvature ? computeCommandVelocity() : 0;
-  if(ts.twist.linear.x<0)
-	  ts.twist.linear.x*=-1;
   ts.twist.angular.z = can_get_curvature ? kappa * ts.twist.linear.x : 0;
+
   pub1_.publish(ts);
 }
 
@@ -163,8 +172,6 @@ void PurePursuitNode::publishControlCommandStamped(const bool &can_get_curvature
   autoware_msgs::ControlCommandStamped ccs;
   ccs.header.stamp = ros::Time::now();
   ccs.cmd.linear_velocity = can_get_curvature ? computeCommandVelocity() : 0;
-  if(ccs.cmd.linear_velocity<0)
-	  ccs.cmd.linear_velocity*=-1;
   ccs.cmd.steering_angle = can_get_curvature ? convertCurvatureToSteeringAngle(wheel_base_, kappa) : 0;
 
   //std::cout << "Publish All Messages From Pure Pursuit ! " << std::endl;

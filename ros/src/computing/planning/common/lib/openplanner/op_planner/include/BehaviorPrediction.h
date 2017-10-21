@@ -13,19 +13,20 @@
 #include <boost/random.hpp>
 #include <boost/math/distributions/normal.hpp>
 
-#define MOTION_POSE_ERROR 0.25 // 50 cm pose error
+#define MOTION_POSE_ERROR 1.25 // 50 cm pose error
 #define MOTION_ANGLE_ERROR 0.05 // 0.05 rad angle error
 #define MOTION_VEL_ERROR 1
 #define MEASURE_POSE_ERROR 0.25
 #define MEASURE_ANGLE_ERROR 0.05
-#define MEASURE_VEL_ERROR 1
-#define MEASURE_ACL_ERROR 1
+#define MEASURE_VEL_ERROR 0.25
+#define MEASURE_ACL_ERROR 0.1
 
 #define STOP_PARTICLES_NUM 150
 #define FORWARD_PARTICLES_NUM 150
-#define YIELD_PARTICLES_NUM 50
-#define RIGHT_BRANCH_PARTICLES_NUM 50
-#define LEFT_BRANCH_PARTICLES_NUM 50
+#define YIELD_PARTICLES_NUM 150
+#define RIGHT_BRANCH_PARTICLES_NUM 150
+#define LEFT_BRANCH_PARTICLES_NUM 150
+#define ALL_PARTICLES 500
 #define MOTION_DT 0.01
 #define LOOK_AHEAD_INDEX 3
 
@@ -38,12 +39,13 @@ typedef boost::mt19937 ENG;
 typedef boost::normal_distribution<double> NormalDIST;
 typedef boost::variate_generator<ENG, NormalDIST> VariatGEN;
 
+
 class Particle
 {
 public:
-	STATE_TYPE beh; //[Stop, Yielding, Forward, Branching]
+	BEH_STATE_TYPE beh; //[Stop, Yielding, Forward, Branching]
 	int vel; //[0 -> Stop,1 -> moving]
-	int acc; //[-1 ->Slowing, 1 -> accelerating]
+	int acc; //[-1 ->Slowing, 0, Stopping, 1 -> accelerating]
 	int indicator; //[-1 -> Left, 0 -> no, 1 -> Right ]
 	GPSPoint pose;
 	double w;
@@ -61,7 +63,7 @@ public:
 		vel_w = 0;
 		acl_w = 0;
 		ind_w = 0;
-		beh = INITIAL_STATE;
+		beh = BEH_STOPPING_STATE;
 		vel = 0;
 		acc = 0;
 		indicator = 0;
@@ -149,9 +151,12 @@ protected:
 
 	void PredictStopParticles(ObjParticles& parts);
 	void CorrectStopParticles(ObjParticles& parts);
+	void CorrectAllParticles(ObjParticles& parts);
 
 	void PredictStopParticles2(ObjParticles& parts);
 	void CorrectStopParticles2(ObjParticles& parts);
+
+	void PredictParticlesAll(ObjParticles& parts);
 
 	void MakeYieldParticles(ObjParticles& parts);
 	void MakeForwardParticles(ObjParticles& parts);

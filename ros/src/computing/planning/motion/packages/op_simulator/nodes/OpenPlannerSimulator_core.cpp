@@ -96,10 +96,10 @@ OpenPlannerSimulator::OpenPlannerSimulator()
 	m_PredControl.Init(m_ControlParams, m_CarInfo, false, false);
 
 	m_LocalPlanner.Init(m_ControlParams, m_PlanningParams, m_CarInfo);
-	m_LocalPlanner.m_SimulationSteeringDelayFactor = 0.2;
+	m_LocalPlanner.m_SimulationSteeringDelayFactor = m_ControlParams.SimulationSteeringDelay;
 
 	//For rviz visualization
-	std::ostringstream str_s1, str_s2, str_s3, str_s4, str_s5, str_s6;
+	std::ostringstream str_s1, str_s2, str_s3, str_s4, str_s5, str_s6, str_s7;
 	str_s1 << "curr_simu_pose_";
 	str_s1 << m_SimParams.id;
 
@@ -117,12 +117,15 @@ OpenPlannerSimulator::OpenPlannerSimulator()
 	str_s6 << "simu_local_trajectory_";
 	str_s6 << m_SimParams.id;
 
+
+
 	pub_CurrPoseRviz			= nh.advertise<visualization_msgs::Marker>(str_s1.str() , 100);
 	pub_SimuBoxPose				= nh.advertise<geometry_msgs::PoseArray>(str_s5.str(), 100);
 	//pub_SimuVelocity			= nh.advertise<geometry_msgs::TwistStamped>(str_s3.str(), 100);
 	pub_SafetyBorderRviz  		= nh.advertise<visualization_msgs::Marker>(str_s4.str(), 1);
 	pub_LocalTrajectoriesRviz   = nh.advertise<visualization_msgs::MarkerArray>(str_s6.str(), 1);
 	pub_BehaviorStateRviz		= nh.advertise<visualization_msgs::Marker>(str_s2.str(), 1);
+	pub_PointerBehaviorStateRviz	= nh.advertise<visualization_msgs::Marker>(str_s2.str(), 1);
 
 
 	// define subscribers.
@@ -178,7 +181,6 @@ void OpenPlannerSimulator::ReadParamFromLaunchFile(PlannerHNS::CAR_BASIC_INFO& m
 
 	nh.getParam("maxVelocity", m_CarInfo.max_speed_forward );
 	nh.getParam("minVelocity", m_CarInfo.min_speed_forward );
-	nh.getParam("minVelocity", m_CarInfo.max_speed_backword );
 	nh.getParam("maxAcceleration", m_CarInfo.max_acceleration );
 	nh.getParam("maxDeceleration", m_CarInfo.max_deceleration );
 
@@ -192,7 +194,7 @@ void OpenPlannerSimulator::ReadParamFromLaunchFile(PlannerHNS::CAR_BASIC_INFO& m
 	m_PlanningParams.enableFollowing = true;
 	m_PlanningParams.enableHeadingSmoothing = false;
 	m_PlanningParams.enableLaneChange = false;
-	m_PlanningParams.enableStopSignBehavior = false;
+	m_PlanningParams.enableStopSignBehavior = true;
 	m_PlanningParams.enableSwerving = false;
 	m_PlanningParams.enableTrafficLightBehavior = true;
 	m_PlanningParams.horizonDistance = 100;
@@ -204,10 +206,12 @@ void OpenPlannerSimulator::ReadParamFromLaunchFile(PlannerHNS::CAR_BASIC_INFO& m
 	m_PlanningParams.minFollowingDistance = 7;
 	m_PlanningParams.pathDensity = 0.5;
 	m_PlanningParams.planningDistance = 1000;
-	m_PlanningParams.carTipMargin = 2;
-	m_PlanningParams.rollInMargin = 10;
+	m_PlanningParams.carTipMargin = 5;
+	m_PlanningParams.rollInMargin = 15;
 	m_PlanningParams.rollOutDensity = 0.5;
 	m_PlanningParams.rollOutNumber = 0;
+
+
 
 }
 
@@ -497,6 +501,8 @@ void OpenPlannerSimulator::callbackGetTrafficLightSignals(const autoware_msgs::S
 void OpenPlannerSimulator::visualizeBehaviors()
 {
 	visualization_msgs::Marker behaviorMarker;
+	visualization_msgs::Marker pointerMarker;
+
 	behaviorMarker.header.frame_id = "map";
 	behaviorMarker.header.stamp = ros::Time();
 	std::ostringstream str_sn;
@@ -508,6 +514,21 @@ void OpenPlannerSimulator::visualizeBehaviors()
 	behaviorMarker.scale.y = 1.0;
 	behaviorMarker.color.a = 1.0;
 	behaviorMarker.frame_locked = false;
+
+	pointerMarker.header.frame_id = "map";
+	pointerMarker.header.stamp = ros::Time();
+	std::ostringstream pointer_str_sn;
+	pointer_str_sn << "sim_behavior_pointer" << m_SimParams.id;
+	pointerMarker.ns = pointer_str_sn.str();
+	pointerMarker.type = visualization_msgs::Marker::LINE_STRIP;
+	pointerMarker.scale.z = 0.2;
+	pointerMarker.scale.x = 0.2;
+	pointerMarker.scale.y = 0.2;
+	pointerMarker.color.a = 1.0;
+	pointerMarker.frame_locked = false;
+	pointerMarker.color.r = 1.0;
+	pointerMarker.color.g = 0.0;
+	pointerMarker.color.b = 1.0;
 
 	if(m_LocalPlanner.m_pCurrentBehaviorState->GetCalcParams()->bTrafficIsRed)
 	{
@@ -522,62 +543,73 @@ void OpenPlannerSimulator::visualizeBehaviors()
 		behaviorMarker.color.b = 0.0;
 	}
 
-	geometry_msgs::Point point;
+	geometry_msgs::Point point_center, point_link;
 
-	point.x = m_LocalPlanner.state.pos.x;
-	point.y = m_LocalPlanner.state.pos.y;
-	point.z = m_LocalPlanner.state.pos.z+2.5;
+	point_center.x = m_LocalPlanner.state.pos.x;
+	point_center.y = m_LocalPlanner.state.pos.y;
+	point_center.z = m_LocalPlanner.state.pos.z+2.5;
 
-	behaviorMarker.pose.position = point;
+	point_link.x = m_LocalPlanner.state.pos.x+3.5*cos(m_LocalPlanner.state.pos.a+M_PI_2);
+	point_link.y = m_LocalPlanner.state.pos.y+3.5*sin(m_LocalPlanner.state.pos.a+M_PI_2);
+	point_link.z = m_LocalPlanner.state.pos.z+2.5;
 
+	behaviorMarker.pose.position = point_link;
+	pointerMarker.points.push_back(point_link);
+	pointerMarker.points.push_back(point_center);
+
+	pointerMarker.id = 1;
 	behaviorMarker.id = 1;
 
-	std::string str = "Unknown";
+	std::string str = "Un ";
 	switch(m_LocalPlanner.m_pCurrentBehaviorState->m_Behavior)
 	{
 	case PlannerHNS::INITIAL_STATE:
-		str = "Init";
+		str = "In ";
 		break;
 	case PlannerHNS::WAITING_STATE:
-		str = "Waiting";
+		str = "Wa ";
 		break;
 	case PlannerHNS::FORWARD_STATE:
-		str = "Forward";
+		str = "Fo ";
 		break;
 	case PlannerHNS::STOPPING_STATE:
-		str = "Stop";
+		str = "St ";
 		break;
 	case PlannerHNS::FINISH_STATE:
-		str = "End";
+		str = "En ";
 		break;
 	case PlannerHNS::FOLLOW_STATE:
-		str = "Follow";
+		str = "Fl ";
 		break;
 	case PlannerHNS::OBSTACLE_AVOIDANCE_STATE:
-		str = "Swerving";
+		str = "Sw ";
 		break;
 	case PlannerHNS::TRAFFIC_LIGHT_STOP_STATE:
-		str = "Light Stop";
+		str = "LS ";
 		break;
 	case PlannerHNS::TRAFFIC_LIGHT_WAIT_STATE:
-		str = "Light Wait";
+		str = "LW ";
 		break;
 	case PlannerHNS::STOP_SIGN_STOP_STATE:
-		str = "Sign Stop";
+		str = "SS ";
 		break;
 	case PlannerHNS::STOP_SIGN_WAIT_STATE:
-		str = "Sign Wait";
+		str = "SW ";
 		break;
 	default:
-		str = "Unknown";
+		str = "Un ";
 		break;
 	}
 
 	std::ostringstream str_out;
-	str_out << str << "(" << m_SimParams.id << ")" ;
+	str_out.precision(4);
+	str_out << str;
+	str_out << m_SimParams.id;
+	str_out << "(" << m_LocalPlanner.m_CurrentVelocity*3.6 << ")" ;
 	behaviorMarker.text = str_out.str();
 
 	pub_BehaviorStateRviz.publish(behaviorMarker);
+	pub_PointerBehaviorStateRviz.publish(pointerMarker);
 }
 
 void OpenPlannerSimulator::SaveSimulationData()
@@ -637,7 +669,7 @@ int OpenPlannerSimulator::LoadSimulationData(PlannerHNS::WayPoint& start_p, Plan
 void OpenPlannerSimulator::PlannerMainLoop()
 {
 
-	ros::Rate loop_rate(25);
+	ros::Rate loop_rate(50);
 	//PlannerHNS::WayPoint defaultStart(3704.15014648,-99459.0743942, 88, 3.12940141294);
 	PlannerHNS::BehaviorState currBehavior;
 	PlannerHNS::VehicleState  currStatus;
@@ -746,6 +778,8 @@ void OpenPlannerSimulator::PlannerMainLoop()
 			sim_data.header.stamp = ros::Time();
 
 			p_id.position.x = m_SimParams.id;
+			p_id.position.y = currStatus.speed; // send actual calculated velocity after sensing delay
+			p_id.position.z = currStatus.steer; // send actual calculated steering after sensing delay
 
 			PlannerHNS::WayPoint pose_center = GetRealCenter(m_LocalPlanner.state);
 
